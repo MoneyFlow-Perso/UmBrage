@@ -1,0 +1,14 @@
+{
+  "name": "Brand Sales Agent",
+  "short_name": "Brand Sales",
+  "description": "Mobile-first sales CRM and prospect workspace",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#080c0a",
+  "theme_color": "#090d0b",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
