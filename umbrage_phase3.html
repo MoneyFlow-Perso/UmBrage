@@ -234,14 +234,14 @@ async function dbSave(c){
  var b=await sb.from('umb_customers').update({stage:c.stage,lead_score:c.score}).eq('id',c.cid);
  var t=(c.draft||'').trim();
  if(c.dr&&!t){await sb.from('umb_messages').update({status:'discarded'}).eq('id',c.dr);c.dr=null}
- else if(c.dr){await sb.from('umb_messages').update({body:t}).eq('id',c.dr)}
+ else if(c.dr){await sb.from('umb_messages').update({body:t,ai_model:c.aim||'local-rules'}).eq('id',c.dr)}
  else if(t){var r=await sb.from('umb_messages').insert({business_id:BIZ,conversation_id:c.id,direction:'out',status:'draft',body:t,ai_generated:true,ai_model:c.aim||'local-rules'}).select().single();if(r.data)c.dr=r.data.id}
  var e=[a,b].filter(function(x){return x.error})[0];if(e)throw e.error}
 async function approve(c,t){try{await dbSave(c);var r=await sb.from('umb_messages').update({status:'approved'}).eq('id',c.dr);if(r.error)throw r.error;c.msgs.push({r:'a',t:t,ts:Date.now(),st:'approved'});c.draft='';c.dr=null;emit('approved',{id:c.id,text:t});render()}catch(e){err(e)}}
 
 function renderProd(){var p=$('#pl');
  if(!sb){p.replaceChildren(h('div',{class:'notice'},'Connect your Supabase project in Settings & Data to manage products. In demo mode, edit the product lines in Settings.'));return}
- p.replaceChildren(h('p',{},h('button',{class:'pri',onclick:function(){PR.unshift({name:'',v:[],active:true,price:0});renderProd()}},'+ Add product')),PR.map(prodCard))}
+ p.replaceChildren(h('p',{},h('button',{class:'pri',onclick:function(){PR.unshift({name:'',v:[],active:true,price:0});renderProd()}},'+ Add product')),...PR.map(prodCard))}
 function prodCard(p){
  var box=h('div',{class:'card'}),key=function(s,c){return (s+'|'+c).toLowerCase()};
  p.q={};p.v.forEach(function(x){p.q[key(x.z,x.c)]=x.q});
@@ -314,7 +314,7 @@ async function renderTest(){var p=$('#tl');
   h('p',{class:'ac'},h('button',{class:'gh',onclick:function(){addCases(starter.map(function(s){return{customer_text:s[0],expect_human:s[1]}}))}},'Add starter cases'),
    h('button',{class:'gh',onclick:function(){var t=$('#tt').value.trim();if(t)addCases([{customer_text:t,expect_human:$('#tx').value,must_include:$('#ti').value,must_exclude:$('#te').value}])}},'Add case'),
    h('button',{class:'pri',onclick:function(){runList(TC)}},'Run all ('+TC.length+' calls)'))),
-  TC.map(function(t){return h('div',{class:'card'},h('div',{class:'r1'},h('b',{},t.customer_text),tg(t.last_ok==null?'Not run':t.last_ok?'Pass':'Fail',t.last_ok===false?'wn':t.last_ok?'ok':'')),h('div',{class:'r2',style:'white-space:normal'},t.last_reply||''),
+  ...TC.map(function(t){return h('div',{class:'card'},h('div',{class:'r1'},h('b',{},t.customer_text),tg(t.last_ok==null?'Not run':t.last_ok?'Pass':'Fail',t.last_ok===false?'wn':t.last_ok?'ok':'')),h('div',{class:'r2',style:'white-space:normal'},t.last_reply||''),
    h('p',{class:'ac'},h('button',{class:'gh',onclick:async function(){var d=await sb.from('umb_test_cases').delete().eq('id',t.id);if(d.error)err(d.error);else renderTest()}},'Delete'),h('button',{class:'gh',onclick:function(){runList([t])}},'Run')))}))}
 $('#cc').addEventListener('click',async function(){CFG={url:$('#cu').value.trim(),key:$('#ck').value.trim()};store.set('cfg',CFG);var s=$('#cst');s.textContent='Connecting...';try{await connect($('#ce').value.trim(),$('#cw').value);s.textContent='Connected as '+ROLE;$('#cw').value=''}catch(e){sb=null;s.textContent='Could not connect: '+((e&&e.message)||e)}});
 $('#cx').addEventListener('click',async function(){if(sb)await sb.auth.signOut();sb=null;BIZ=null;PR=[];convs=store.get('convs',null)||[];$('#kpw').hidden=false;$('#cst').textContent='Signed out';render()});
