@@ -277,6 +277,7 @@ async function saveProd(p,box){try{
  await loadAll();renderProd();$('#st').textContent='Saved '+row.name
 }catch(e){err(e)}}
 var AI={used:0,msg:''},TC=[];
+window.addEventListener('unhandledrejection',function(e){err(e.reason)});
 function today(){return new Date(Date.now()+216e5).toISOString().slice(0,10)}
 function usageText(){return KB.lim>0?'AI drafts today: '+AI.used+' of '+KB.lim+'.':'AI drafting is off.'}
 async function aiErr(e){try{var j=await e.context.json();return j.error||e.message}catch(x){return e.message}}
@@ -285,7 +286,7 @@ async function aiDraft(c,base){
  if(!(KB.lim>0)){AI.msg=KB.lim==null?'Apply umbrage_stage3.sql first. Using local rules.':'AI drafting is off (limit 0). Using local rules.';return base}
  var r=await sb.functions.invoke('umb-draft',{body:{conversation_id:c.id}});
  if(r.error){var m=await aiErr(r.error);AI.msg=m==='limit'?'Daily AI limit reached ('+KB.lim+'). Using local rules.':'AI draft failed ('+m+'). Using local rules.';if(m==='limit')AI.used=KB.lim;return base}
- var j=r.data;AI.used=KB.lim-j.left;
+ var j=r.data;if(!j||typeof j.left!=='number'){AI.msg='Unexpected reply from the AI function: '+JSON.stringify(j).slice(0,160)+'. Using local rules.';return base}AI.used=KB.lim-j.left;
  if(!j.text){AI.msg='The AI gave no usable reply. Using local rules, flagged for a human.';base.human=true;return base}
  AI.msg='';base.text=j.text;base.intent=j.intent||base.intent;base.human=!!j.needs_human||base.intent==='complaint'||base.intent==='discount';c.hr=j.reason||null;c.aim=j.model;return base}
 async function runCase(t){
@@ -297,7 +298,7 @@ async function runCase(t){
  if(/\b\d+\s*(pcs|pieces|units|left|in stock)\b/i.test(j.text||'')){ok=false;why.push('exact stock count')}
  if(t.expect_human==='yes'&&!j.needs_human){ok=false;why.push('should need a human')}
  if(t.expect_human==='no'&&j.needs_human){ok=false;why.push('should not need a human')}
- AI.used=KB.lim-j.left;
+ if(typeof j.left==='number')AI.used=KB.lim-j.left;
  var u=await sb.from('umb_test_cases').update({last_ok:ok,last_reply:(j.text||'')+(why.length?'  [FAIL: '+why.join('; ')+']':''),last_run_at:new Date().toISOString()}).eq('id',t.id);
  return u.error?{stop:u.error.message}:{}}
 async function runList(a){for(var i=0;i<a.length;i++){$('#st').textContent='Running test '+(i+1)+' of '+a.length+(i?' (pausing between calls for free-tier rate limits)':'')+'...';if(i)await new Promise(function(ok){setTimeout(ok,12500)});var r=await runCase(a[i]);if(r.stop){await renderTest();err(r.stop);return}}await renderTest();$('#st').textContent='Test run finished. '+usageText()}
