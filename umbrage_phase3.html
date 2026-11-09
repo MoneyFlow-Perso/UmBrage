@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#090d0b">
+<title>UmBrage: AI agent</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+:root{--bg:#080c0a;--panel:#101713;--panel2:#151f19;--line:#26352c;--muted:#91a397;--text:#eff8f1;--green:#a5ff4f;--red:#ff7474;--amber:#ffc96b;--radius:17px;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{margin:0;background:radial-gradient(ellipse at 80% -10%,#1b3020 0,transparent 42%),var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}button{cursor:pointer}
+:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.app{max-width:1500px;margin:auto;min-height:100dvh;display:grid;grid-template-columns:245px 1fr}
+.sidebar{border-right:1px solid var(--line);padding:22px 14px;background:#0b110e;position:sticky;top:0;height:100dvh;overflow:auto}
+.brand{display:flex;align-items:center;gap:11px;padding:3px 8px 25px}
+.logo{width:38px;height:38px;border-radius:12px;background:var(--green);color:#081006;display:grid;place-items:center;font-weight:900;font-size:20px;box-shadow:0 0 22px #a5ff4f44}
+.brand strong{display:block;font-size:15px;letter-spacing:.3px}.brand small{color:var(--muted);font-size:11px}
+.navlabel{font-size:10px;letter-spacing:1.5px;color:#738277;padding:14px 10px 7px}
+.nav{display:grid;gap:5px}
+.nav button{border:0;background:transparent;color:#b9c8bd;text-align:left;padding:11px 12px;border-radius:11px;display:flex;align-items:center;gap:12px}
+.nav button.active,.nav button:hover{background:#1a2a1e;color:var(--green)}
+.ico{width:20px;text-align:center;font-size:17px}
+.sidefoot{margin-top:28px;border-top:1px solid var(--line);padding-top:13px;color:var(--muted);font-size:11px}
+.main{min-width:0;padding:25px clamp(15px,3vw,38px) 90px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+.eyebrow{font-size:11px;color:var(--green);letter-spacing:1.4px;text-transform:uppercase}
+.topbar h1{font-size:clamp(23px,3vw,31px);margin:4px 0 0}
+.top-actions{display:flex;gap:8px;align-items:center}
+.pill{border:1px solid var(--line);background:#101813;border-radius:999px;padding:8px 12px;color:#c8d5cb;font-size:12px}
+.pri{background:var(--green);border:1px solid var(--green);color:#071006;padding:10px 14px;border-radius:11px;font-weight:650}
+.gh{background:transparent;border:1px solid var(--line);color:var(--text);padding:9px 13px;border-radius:11px;font-weight:650}
+input,select,textarea{background:#0b120e;border:1px solid var(--line);border-radius:10px;padding:10px 11px;width:100%;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--green)}
+label{display:block;font-size:11px;color:#9aaa9f;margin:12px 0 5px}
+small{color:var(--muted);font-size:11px}
+.notice{border:1px solid #4a4028;background:#211d12;color:#e9d6a5;padding:12px 14px;border-radius:12px;font-size:12px;margin-bottom:15px}
+.ms{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin-bottom:17px}
+.k,.card,.pane{background:linear-gradient(145deg,#121b16,#0f1512);border:1px solid var(--line);border-radius:var(--radius)}
+.k{padding:15px}.k span{color:var(--muted);font-size:12px;display:block;order:-1}
+.k{display:flex;flex-direction:column}.k b{font-size:29px;font-weight:800;letter-spacing:-1px;margin-top:6px}
+.ib{display:grid;grid-template-columns:340px 1fr;gap:14px}
+.pane{display:flex;flex-direction:column;height:calc(100dvh - 330px);min-height:440px;overflow:hidden}
+.ph{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:13px 15px;border-bottom:1px solid #202c24}
+.ph b{font-size:16px}.ph select{width:auto}
+.gr{flex:1;min-width:0}.gr b,.gr small{display:block}
+.sc{flex:1;overflow-y:auto}
+.row{display:block;width:100%;text-align:left;background:transparent;border:0;border-bottom:1px solid #202c24;padding:12px 15px}
+.row.on{background:#1a2a1e;box-shadow:inset 3px 0 var(--green)}
+.r1{display:flex;justify-content:space-between;gap:8px}.r1 b{font-size:13px}
+.r2{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:2px 0 7px}
+.tg{display:inline-flex;padding:4px 8px;border-radius:99px;background:#203124;color:var(--green);font-size:10px;font-weight:700;margin:0 5px 4px 0;white-space:nowrap}
+.tg.wn{background:#382b17;color:var(--amber)}.tg.ok{background:#1c2a39;color:#91c8ff}
+.fd{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px}
+.b{max-width:80%;padding:9px 12px;border-radius:14px;background:var(--panel2);border:1px solid var(--line);white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}
+.b.a{align-self:flex-end;background:var(--green);color:#071006;border-color:var(--green)}
+.cp{border-top:1px solid #466a36;background:linear-gradient(140deg,#16251a,#111a14);padding:14px 16px}
+.cp textarea{background:#0a100c;border-color:#2a3a2d;resize:vertical;margin:10px 0;font-size:13px}
+.lb{color:var(--green);font-weight:800;font-size:13px}
+.ac{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.em{margin:auto;padding:28px;text-align:center;color:var(--muted);max-width:280px}
+.bk{display:none}
+.sf{padding:9px 15px;border-top:1px solid #4a4028;background:#211d12;color:#e9d6a5;font-size:12px}
+.card{padding:17px;margin-bottom:14px;max-width:680px}
+.cp2{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;border-bottom:1px solid #202c24;padding:11px 0}
+.cp2 span{flex:1;overflow-wrap:anywhere;font-size:13px}
+dialog{background:#111a14;color:var(--text);border:1px solid #344438;border-radius:20px 20px 14px 14px;padding:20px;width:min(620px,calc(100% - 24px));box-shadow:0 20px 80px #000b}
+dialog::backdrop{background:#000b}
+.mobilebar{display:none}
+@media(max-width:850px){.app{display:block}.sidebar{display:none}.main{padding:18px 14px 95px}.ms{grid-template-columns:repeat(2,minmax(0,1fr))}.ms .k:last-child{grid-column:1/-1}.ib{grid-template-columns:1fr}.ib .cv{display:none}body.chat .ib .ls{display:none}body.chat .ib .cv{display:flex}.bk{display:inline-block}.b{max-width:90%}.pane{height:calc(100dvh - 300px)}.top-actions .pill{display:none}dialog{margin:auto auto 12px}
+.mobilebar{display:flex;position:fixed;z-index:10;bottom:0;left:0;right:0;background:#0b110ef5;border-top:1px solid var(--line);padding:7px 4px calc(7px + env(safe-area-inset-bottom,0px));justify-content:space-around;backdrop-filter:blur(12px)}
+.mobilebar button{background:none;border:0;color:#8fa094;font-size:10px;display:grid;justify-items:center;gap:3px;padding:4px 14px}.mobilebar button.active{color:var(--green)}.mobilebar span{font-size:18px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+.gt{border-collapse:collapse;font-size:12px}.gt th{padding:4px 8px;text-align:left;color:var(--muted);font-weight:600;white-space:nowrap}.gt td{padding:3px}.gt input{width:74px;padding:6px}.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}#pl .card{max-width:760px}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand"><div class="logo">U</div><div><strong>UmBrage</strong><small>BRAND SALES AGENT · AI</small></div></div>
+  <div class="navlabel">AI AGENT</div>
+  <nav class="nav" aria-label="Sections">
+    <button data-t="inbox" class="active"><span class="ico">✉</span> AI Reply Drafts</button>
+    <button data-t="camp"><span class="ico">⌕</span> Campaign Copy</button>
+    <button data-t="prod"><span class="ico">▦</span> Products</button>
+    <button data-t="test"><span class="ico">✓</span> Test set</button>
+  </nav>
+  <div class="navlabel">SYSTEM</div>
+  <nav class="nav"><button data-t="set"><span class="ico">⚙</span> Settings &amp; Data</button></nav>
+  <div class="sidefoot">LOCAL DEMO STORAGE<br><span style="color:var(--green)">●</span> This device</div>
+</aside>
+<main class="main">
+<header class="topbar"><div><div class="eyebrow">AI SALES AGENT</div><h1 id="pt">AI Reply Drafts</h1></div><div class="top-actions"><span class="pill">● Demo mode</span><button class="pri" id="sim">+ Simulate message</button></div></header>
+<div class="notice" id="st"></div>
+<section class="ms" id="m" aria-label="Summary"></section>
+
+<section id="t-inbox" class="ib">
+  <div class="pane ls"><div class="ph"><b>Conversations</b><small>Sample chats at first</small></div><div class="sc" id="lst"></div></div>
+  <div class="pane cv" id="cv"></div>
+</section>
+
+<section id="t-camp" hidden>
+  <div class="card">
+    <b>Campaign copy</b><br><small>Three message variants for a product and audience.</small>
+    <label for="cp">Product</label><select id="cp"></select>
+    <label for="cg">Goal</label><select id="cg"><option value="launch">Launch</option><option value="restock">Back in stock</option><option value="offer">Offer</option><option value="follow">Follow up</option></select>
+    <label for="cs">Audience (pipeline stage)</label><select id="cs"><option>All</option><option>New</option><option>Interested</option><option>Negotiating</option><option>Won</option><option>Lost</option></select>
+    <p><button class="pri" id="gen">Write variants</button></p>
+    <div id="cout"></div>
+  </div>
+</section>
+
+<section id="t-prod" hidden><div id="pl"></div></section>
+<section id="t-test" hidden><div id="tl"></div></section>
+
+<section id="t-set" hidden>
+  <div class="card">
+    <b>Connection</b><br><small>Use your Supabase project URL and the anon (public) key, never the service role key. Open this file from your own hosting (for example GitHub Pages): the claude.ai preview blocks calls to Supabase, so it stays in demo mode.</small>
+    <label for="cu">Project URL</label><input id="cu" placeholder="https://xxxx.supabase.co">
+    <label for="ck">Anon key</label><input id="ck">
+    <label for="ce">Staff email</label><input id="ce" type="email" autocomplete="username">
+    <label for="cw">Password</label><input id="cw" type="password" autocomplete="current-password">
+    <p class="ac"><button class="gh" id="cx">Sign out</button><button class="pri" id="cc">Connect</button></p><small id="cst"></small>
+  </div>
+  <div class="card">
+    <b>Brand knowledge</b><br><small>The agent drafts replies only from this. Edit it to match your brand.</small>
+    <div id="kpw"><label for="kp">Demo products (one per line: name | price | stock | sizes)</label><textarea id="kp" rows="5"></textarea></div>
+    <label for="ks">Delivery</label><input id="ks">
+    <label for="kh">Opening hours</label><input id="kh">
+    <label for="kt">Tone</label><select id="kt"><option value="friendly">Friendly</option><option value="formal">Formal</option><option value="direct">Direct</option></select>
+    <label for="ksk">Stock in chats</label><select id="ksk"><option value="none">Off (staff dashboard only)</option><option value="yn">On: say available or not</option></select>
+    <label for="kzk">Sizes in chats</label><select id="kzk"><option value="on">On</option><option value="off">Off</option></select>
+    <small>Exact stock counts are never sent in chats. Staff always see them in the Staff only line under each conversation.</small>
+    <label for="al">Daily AI draft limit (0 turns AI off)</label><input id="al" type="number" min="0"><small id="au"></small>
+    <label for="ku">AI backend URL (optional)</label><input id="ku" placeholder="https://your-server.example/draft">
+    <small>Your server calls the AI model so keys never sit in the browser. It receives the chat and brand knowledge and returns {"text": "..."}.</small>
+    <p class="ac"><button class="gh" id="clr">Clear all chats</button><button class="pri" id="sv">Save settings</button></p>
+  </div>
+  <div class="card">
+    <b>Merge later</b><br><small>Not connected to the CRM yet. Everything is exposed as window.UmbrageAgent (ingest, on, setDrafter, getState), and events also go out with postMessage when embedded.</small>
+    <label for="ex">Current state</label><textarea id="ex" rows="5" readonly></textarea>
+    <p class="ac"><button class="gh" id="cpx">Copy state</button></p>
+  </div>
+</section>
+</main>
+</div>
+<nav class="mobilebar" aria-label="Sections">
+  <button data-t="inbox" class="active"><span>✉</span>Replies</button>
+  <button data-t="camp"><span>⌕</span>Campaigns</button>
+  <button data-t="prod"><span>▦</span>Products</button>
+  <button data-t="test"><span>✓</span>Tests</button>
+  <button data-t="set"><span>⚙</span>Settings</button>
+</nav>
+
+<dialog id="dlg" aria-labelledby="dt">
+  <b id="dt">Simulate an incoming message</b>
+  <label for="sn">Customer name</label><input id="sn" value="Karim">
+  <label for="sc">Channel</label><select id="sc"><option value="whatsapp">WhatsApp</option><option value="instagram">Instagram</option><option value="messenger">Messenger</option></select>
+  <label for="sm">Message</label><textarea id="sm" rows="3">Hi, price of the Classic Tee? I want to order today.</textarea>
+  <p class="ac"><button class="gh" id="dx">Cancel</button><button class="pri" id="dg">Add message</button></p>
+</dialog>
+
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s)};
+function h(tag,props){var e=document.createElement(tag);for(var k in (props||{})){var v=props[k];if(k==="class")e.className=v;else if(k.slice(0,2)==="on")e.addEventListener(k.slice(2),v);else e.setAttribute(k,v)}
+ Array.prototype.slice.call(arguments,2).flat().forEach(function(c){if(c!=null&&c!==false)e.append(c)});return e}
+var store={get:function(k,d){try{var v=localStorage.getItem("umb:"+k);return v?JSON.parse(v):d}catch(e){return d}},set:function(k,v){try{localStorage.setItem("umb:"+k,JSON.stringify(v))}catch(e){}}};
+var DEF={products:"Classic Tee | ৳650 | 24 | S, M, L, XL\nHoodie | ৳1850 | 6 | M, L, XL\nCap | ৳450 | 0 | One size",ship:"Dhaka ৳60, outside Dhaka ৳120, 2 to 4 days",hours:"10am to 10pm daily",tone:"friendly",url:"",stk:"none",szk:"on"};
+var KB=Object.assign({},DEF,store.get("kb",{}));
+var convs=store.get("convs",null),cur=null,L={};
+var STAGES=["New","Interested","Negotiating","Won","Lost"],CH={whatsapp:"WhatsApp",instagram:"Instagram",messenger:"Messenger"};
+var INTENTS=[["complaint",/refund|late|broken|wrong|damaged|complain|bad service/i],["order",/\border\b|\bbuy\b|confirm|checkout/i],["discount",/discount|offer|cheaper|less price|bargain/i],["price",/price|cost|how much|\brate\b/i],["stock",/stock|available|availability|colou?r/i],["size",/\bsizes?\b|sizing/i],["ship",/deliver|shipping|courier|\bship\b/i],["hello",/^\s*(hi|hello|hey|salam|assalam)/i]];
+var W={order:45,discount:25,price:20,stock:20,size:20,ship:15,hello:5,general:5,complaint:0};
+var pt,persist=function(){if(!sb){store.set("convs",convs);return}clearTimeout(pt);pt=setTimeout(function(){var c=get(cur);if(c&&c.cid)dbSave(c).catch(err)},500)};
+var get=function(id){return convs.filter(function(c){return c.id===id})[0]};
+function emit(t,p){(L[t]||[]).forEach(function(f){try{f(p)}catch(e){}});try{if(parent!==window)parent.postMessage({source:"umbrage",type:t,payload:p},"*")}catch(e){}}
+function prods(){if(sb)return realProds();return KB.products.split("\n").map(function(l){return l.split("|").map(function(s){return s.trim()})}).filter(function(a){return a[0]}).map(function(a){return{n:a[0],p:a[1]||"",s:parseInt(a[2]||"0",10)||0,z:a[3]||""}})}
+
+function localDraft(c){
+ var last=c.msgs.slice().reverse().filter(function(m){return m.r==="c"})[0],tx=last?last.t:"",low=tx.toLowerCase(),P=prods();
+ var pr=P.filter(function(p){return p.n.toLowerCase().split(" ").some(function(w){return w.length>2&&low.indexOf(w)>-1})})[0];
+ var its=INTENTS.filter(function(x){return x[1].test(tx)}).map(function(x){return x[0]}),it=its[0]||"general";
+ var first=c.name.split(" ")[0],g={friendly:"Hi "+first+"! ",formal:"Dear "+first+", ",direct:""}[KB.tone]||"",out=pr&&pr.s===0;
+ var R={
+  hello:g+"Welcome! Which product can I help you with today?",
+  price:pr?g+pr.n+" is "+pr.p+". Shall I reserve one for you?":g+"Happy to share prices. Which product? We have "+P.map(function(p){return p.n}).join(", ")+".",
+  stock:pr?g+"I will confirm availability of "+pr.n+" with the team and reply shortly.":g+"Tell me which item and I will check stock.",
+  ship:g+"Delivery: "+KB.ship+". Where should we send it?",
+  discount:g+(pr?"I can’t change the listed price of "+pr.n+" myself, so I am passing your request to the team. They will reply shortly.":"I am checking with the team about offers and will reply shortly."),
+  order:g+"Great, let’s confirm your order"+(pr?" for "+pr.n+" ("+pr.p+")":"")+". Please send your full name, phone, address and size.",
+  complaint:g+"I’m sorry about this. I have flagged it to our team and someone will contact you personally soon.",
+  general:g+"Thanks for your message. Could you tell me a bit more about what you need? Our hours: "+KB.hours+"."};
+ var has=function(k){return its.indexOf(k)>-1};
+ R.size=g+"Which item do you need sizes for? I will check for you.";
+ var T=R[it];
+ if(its.length>1)T=its.filter(function(k){return k!=="hello"}).map(function(k,i){return i?R[k].slice(g.length):R[k]}).join(" ");
+ var shS=KB.stk==="yn",shZ=KB.szk!=="off",szOk=has("size")&&shZ&&pr&&pr.z&&!out,noSz=!!(pr&&((has("stock")&&!shS)||(has("size")&&!szOk&&!(out&&shS))));
+ if(pr&&(has("price")||has("stock")||has("size"))&&!has("order")&&!has("complaint")&&!has("discount")){
+  var f=[];if(has("price"))f.push(pr.p);if((has("stock")||(has("size")&&out))&&shS)f.push(out?"out of stock right now":"available");if(szOk)f.push("sizes "+pr.z);
+  T=g+pr.n+(f.length?": "+f.join(", "):"")+". "+(noSz?"I will confirm availability with the team and reply shortly.":(out?"Want a message when it is back?":(szOk?"Which size would you like?":"Which one should I reserve for you?")))}
+ return{text:T,intent:it,score:Math.min(100,(c.score||15)+W[it]),human:it==="complaint"||it==="discount"||!!noSz}}
+
+var sb=null,BIZ=null,ROLE='',UID=null,PR=[],CFG=store.get('cfg',{});
+var lst=function(s){return s.split(',').map(function(x){return x.trim()}).filter(Boolean)};
+function err(e){var n=$('#st');n.textContent='Problem: '+((e&&e.message)||e);n.style.borderColor='#ff7474'}
+function realProds(){return PR.filter(function(p){return p.id&&p.active}).map(function(p){var z=[];p.v.forEach(function(x){if(x.z&&z.indexOf(x.z)<0)z.push(x.z)});return{n:p.name,p:'৳'+p.price,s:p.v.reduce(function(a,x){return a+x.q},0),z:z.join(', ')}})}
+async function pickBiz(uid){UID=uid;var m=await sb.from('business_members').select('business_id,role').eq('user_id',uid).limit(1);if(m.error)throw m.error;if(!m.data.length)throw new Error('This user is not a member of any business');BIZ=m.data[0].business_id;ROLE=m.data[0].role}
+async function connect(em,pw){if(!window.supabase)throw new Error('Supabase library did not load');sb=window.supabase.createClient(CFG.url,CFG.key);var r=await sb.auth.signInWithPassword({email:em,password:pw});if(r.error)throw r.error;await pickBiz(r.data.user.id);await loadAll()}
+async function boot(){if(!CFG.url||!CFG.key||!window.supabase)return;try{sb=window.supabase.createClient(CFG.url,CFG.key);var s=await sb.auth.getSession();if(!s.data.session){sb=null;return}await pickBiz(s.data.session.user.id);await loadAll()}catch(e){sb=null;err(e)}}
+async function loadAll(){
+ var q=function(t){return sb.from(t).select('*').eq('business_id',BIZ)};
+ var R=await Promise.all([q('umb_settings'),q('umb_products').order('name'),q('umb_variants').order('sort'),q('umb_stock'),q('umb_customers'),q('umb_conversations').order('last_message_at',{ascending:false}),q('umb_messages').order('created_at')]);
+ var e=R.filter(function(x){return x.error})[0];if(e)throw e.error;
+ var D=R.map(function(x){return x.data}),s=D[0][0];
+ if(s)KB=Object.assign(KB,{ship:s.delivery,hours:s.hours,tone:s.tone,stk:s.show_stock,szk:s.show_sizes?'on':'off',lim:s.ai_daily_limit});
+ var qty={},cu={};D[3].forEach(function(k){qty[k.variant_id]=k.qty});D[4].forEach(function(c){cu[c.id]=c});
+ PR=D[1].map(function(p){var v=D[2].filter(function(x){return x.product_id===p.id&&x.active}).map(function(x){return{id:x.id,z:x.size||'',c:x.color||'',q:qty[x.id]||0}});return{id:p.id,name:p.name,code:p.code||'',price:Number(p.price),description:p.description,pitch:p.pitch,active:p.active,v:v}});
+ convs=D[5].map(function(c){var u=cu[c.customer_id]||{},ms=D[6].filter(function(m){return m.conversation_id===c.id}),dr=ms.filter(function(m){return m.status==='draft'})[0];
+  return{id:c.id,cid:c.customer_id,name:u.name||'Customer',ch:c.channel,stage:u.stage||'New',score:u.lead_score||0,intent:c.intent||'',human:c.needs_human,unread:c.unread_count,dr:dr?dr.id:null,draft:dr?dr.body:'',msgs:ms.filter(function(m){return m.status!=='draft'&&m.status!=='discarded'}).map(function(m){return{r:m.direction==='in'?'c':'a',t:m.body,ts:Date.parse(m.platform_ts||m.created_at),st:m.status}})}});
+ var us=await sb.from('umb_ai_usage').select('calls').eq('business_id',BIZ).eq('day',today()).maybeSingle();AI.used=us.data?us.data.calls:0;
+ $('#kpw').hidden=true;render()}
+async function dbNew(c){
+ var u=await sb.from('umb_customers').insert({business_id:BIZ,name:c.name}).select().single();if(u.error)throw u.error;
+ var i=await sb.from('umb_identities').insert({business_id:BIZ,customer_id:u.data.id,channel:c.ch,external_id:'sim-'+u.data.id}).select().single();if(i.error)throw i.error;
+ var v=await sb.from('umb_conversations').insert({business_id:BIZ,customer_id:u.data.id,identity_id:i.data.id,channel:c.ch}).select().single();if(v.error)throw v.error;
+ c.cid=u.data.id;c.id=v.data.id}
+async function dbIn(c,t){var r=await sb.from('umb_messages').insert({business_id:BIZ,conversation_id:c.id,direction:'in',status:'received',body:t,platform_ts:new Date().toISOString()});if(r.error)throw r.error}
+async function dbSave(c){
+ var a=await sb.from('umb_conversations').update({intent:c.intent||null,needs_human:!!c.human,needs_human_reason:c.human?(c.hr||(c.intent==='complaint'?'complaint':c.intent==='discount'?'discount':'unknown_detail')):null,unread_count:c.unread}).eq('id',c.id);
+ var b=await sb.from('umb_customers').update({stage:c.stage,lead_score:c.score}).eq('id',c.cid);
+ var t=(c.draft||'').trim();
+ if(c.dr&&!t){await sb.from('umb_messages').update({status:'discarded'}).eq('id',c.dr);c.dr=null}
+ else if(c.dr){await sb.from('umb_messages').update({body:t}).eq('id',c.dr)}
+ else if(t){var r=await sb.from('umb_messages').insert({business_id:BIZ,conversation_id:c.id,direction:'out',status:'draft',body:t,ai_generated:true,ai_model:c.aim||'local-rules'}).select().single();if(r.data)c.dr=r.data.id}
+ var e=[a,b].filter(function(x){return x.error})[0];if(e)throw e.error}
+async function approve(c,t){try{await dbSave(c);var r=await sb.from('umb_messages').update({status:'approved'}).eq('id',c.dr);if(r.error)throw r.error;c.msgs.push({r:'a',t:t,ts:Date.now(),st:'approved'});c.draft='';c.dr=null;emit('approved',{id:c.id,text:t});render()}catch(e){err(e)}}
+
+function renderProd(){var p=$('#pl');
+ if(!sb){p.replaceChildren(h('div',{class:'notice'},'Connect your Supabase project in Settings & Data to manage products. In demo mode, edit the product lines in Settings.'));return}
+ p.replaceChildren(h('p',{},h('button',{class:'pri',onclick:function(){PR.unshift({name:'',v:[],active:true,price:0});renderProd()}},'+ Add product')),PR.map(prodCard))}
+function prodCard(p){
+ var box=h('div',{class:'card'}),key=function(s,c){return (s+'|'+c).toLowerCase()};
+ p.q={};p.v.forEach(function(x){p.q[key(x.z,x.c)]=x.q});
+ var uq=function(k){var a=[];p.v.forEach(function(x){if(x[k]&&a.indexOf(x[k])<0)a.push(x[k])});return a.join(', ')};
+ var I=function(n,l,v,t){return h('div',{},h('label',{},l),h('input',{name:n,value:v==null?'':v,type:t||'text'}))};
+ var d=h('textarea',{name:'d',rows:'3'}),pt2=h('textarea',{name:'pt',rows:'2'}),ch=h('input',{name:'act',type:'checkbox',style:'width:auto'});
+ d.value=p.description||'';pt2.value=p.pitch||'';ch.checked=p.active!==false;
+ var sz=h('input',{name:'z',value:uq('z'),placeholder:'S, M, L, XL'}),cl=h('input',{name:'c',value:uq('c'),placeholder:'Black, White'}),grid=h('div',{style:'overflow-x:auto;margin-top:6px'});
+ var draw=function(){var S=lst(sz.value),C=lst(cl.value);if(!S.length)S=[''];if(!C.length)C=[''];
+  var tb=h('table',{class:'gt'},h('tr',{},h('th',{},''),C.map(function(c){return h('th',{},c||'Qty')})));
+  S.forEach(function(s){tb.append(h('tr',{},h('th',{},s||'One size'),C.map(function(c){var k=key(s,c),i=h('input',{type:'number',min:'0','aria-label':(s||'One size')+' '+c});i.value=p.q[k]||0;i.addEventListener('input',function(){p.q[k]=parseInt(i.value,10)||0});return h('td',{},i)})))});
+  grid.replaceChildren(tb)};
+ sz.addEventListener('change',draw);cl.addEventListener('change',draw);draw();
+ box.append(h('div',{class:'two'},I('code','Product code',p.code),I('price','Price (BDT)',p.price||'','number')),I('name','Name',p.name),
+  h('label',{},'Description (the only source for details like material or fit)'),d,h('label',{},'Pitch (sales hook used with the price)'),pt2,
+  h('div',{class:'two'},h('div',{},h('label',{},'Sizes (leave empty if none)'),sz),h('div',{},h('label',{},'Colours (leave empty if none)'),cl)),
+  h('label',{},'Stock per size and colour (staff only, never sent in chats)'),grid,h('label',{},ch,' Active (the agent can talk about it)'),
+  h('p',{class:'ac'},h('button',{class:'pri',onclick:function(){saveProd(p,box)}},'Save product')));
+ return box}
+async function saveProd(p,box){try{
+ var f=function(k){return box.querySelector('[name='+k+']')},key=function(s,c){return (s+'|'+c).toLowerCase()};
+ var row={business_id:BIZ,code:f('code').value.trim()||null,name:f('name').value.trim(),price:Number(f('price').value)||0,description:f('d').value,pitch:f('pt').value,active:f('act').checked};
+ if(!row.name){err('Give the product a name first');return}
+ var r=p.id?await sb.from('umb_products').update(row).eq('id',p.id).select().single():await sb.from('umb_products').insert(row).select().single();
+ if(r.error)throw r.error;p.id=r.data.id;
+ var S=lst(f('z').value),C=lst(f('c').value);if(!S.length)S=[''];if(!C.length)C=[''];
+ var ex=await sb.from('umb_variants').select('*').eq('product_id',p.id);if(ex.error)throw ex.error;var keep={};
+ for(var i=0;i<S.length;i++)for(var j=0;j<C.length;j++){var k=key(S[i],C[j]),v=ex.data.filter(function(x){return key(x.size||'',x.color||'')===k})[0];
+  if(!v){var n=await sb.from('umb_variants').insert({business_id:BIZ,product_id:p.id,size:S[i]||null,color:C[j]||null,sort:i*100+j}).select().single();if(n.error)throw n.error;v=n.data}
+  else if(!v.active||v.sort!==i*100+j){var u=await sb.from('umb_variants').update({active:true,sort:i*100+j}).eq('id',v.id);if(u.error)throw u.error}
+  keep[v.id]=1;var s2=await sb.from('umb_stock').upsert({variant_id:v.id,business_id:BIZ,qty:p.q[k]||0,updated_by:UID});if(s2.error)throw s2.error}
+ for(var x of ex.data){if(x.active&&!keep[x.id]){var o=await sb.from('umb_variants').update({active:false}).eq('id',x.id);if(o.error)throw o.error}}
+ await loadAll();renderProd();$('#st').textContent='Saved '+row.name
+}catch(e){err(e)}}
+var AI={used:0,msg:''},TC=[];
+function today(){return new Date(Date.now()+216e5).toISOString().slice(0,10)}
+function usageText(){return KB.lim>0?'AI drafts today: '+AI.used+' of '+KB.lim+'.':'AI drafting is off.'}
+async function aiErr(e){try{var j=await e.context.json();return j.error||e.message}catch(x){return e.message}}
+async function aiDraft(c,base){
+ c.hr=null;c.aim='local-rules';
+ if(!(KB.lim>0)){AI.msg=KB.lim==null?'Apply umbrage_stage3.sql first. Using local rules.':'AI drafting is off (limit 0). Using local rules.';return base}
+ var r=await sb.functions.invoke('umb-draft',{body:{conversation_id:c.id}});
+ if(r.error){var m=await aiErr(r.error);AI.msg=m==='limit'?'Daily AI limit reached ('+KB.lim+'). Using local rules.':'AI draft failed ('+m+'). Using local rules.';if(m==='limit')AI.used=KB.lim;return base}
+ var j=r.data;AI.used=KB.lim-j.left;
+ if(!j.text){AI.msg='The AI gave no usable reply. Using local rules, flagged for a human.';base.human=true;return base}
+ AI.msg='';base.text=j.text;base.intent=j.intent||base.intent;base.human=!!j.needs_human||base.intent==='complaint'||base.intent==='discount';c.hr=j.reason||null;c.aim=j.model;return base}
+async function runCase(t){
+ var r=await sb.functions.invoke('umb-draft',{body:{business_id:BIZ,text:t.customer_text}});
+ if(r.error){var m=await aiErr(r.error);return{stop:m==='limit'?'Daily AI limit reached.':m}}
+ var j=r.data,x=(j.text||'').toLowerCase(),ok=!!j.text,why=j.text?[]:['no reply'];
+ lst(t.must_include||'').forEach(function(w){if(x.indexOf(w.toLowerCase())<0){ok=false;why.push('missing "'+w+'"')}});
+ lst(t.must_exclude||'').forEach(function(w){if(x.indexOf(w.toLowerCase())>=0){ok=false;why.push('contains "'+w+'"')}});
+ if(/\b\d+\s*(pcs|pieces|units|left|in stock)\b/i.test(j.text||'')){ok=false;why.push('exact stock count')}
+ if(t.expect_human==='yes'&&!j.needs_human){ok=false;why.push('should need a human')}
+ if(t.expect_human==='no'&&j.needs_human){ok=false;why.push('should not need a human')}
+ AI.used=KB.lim-j.left;
+ var u=await sb.from('umb_test_cases').update({last_ok:ok,last_reply:(j.text||'')+(why.length?'  [FAIL: '+why.join('; ')+']':''),last_run_at:new Date().toISOString()}).eq('id',t.id);
+ return u.error?{stop:u.error.message}:{}}
+async function runList(a){for(var i=0;i<a.length;i++){$('#st').textContent='Running test '+(i+1)+' of '+a.length+(i?' (pausing between calls for free-tier rate limits)':'')+'...';if(i)await new Promise(function(ok){setTimeout(ok,12500)});var r=await runCase(a[i]);if(r.stop){await renderTest();err(r.stop);return}}await renderTest();$('#st').textContent='Test run finished. '+usageText()}
+async function addCases(rows){var r=await sb.from('umb_test_cases').insert(rows.map(function(x){return Object.assign({business_id:BIZ},x)}));if(r.error)err(r.error);else renderTest()}
+async function renderTest(){var p=$('#tl');
+ if(!sb){p.replaceChildren(h('div',{class:'notice'},'Connect Supabase in Settings & Data to use the test set.'));return}
+ var r=await sb.from('umb_test_cases').select('*').eq('business_id',BIZ).order('created_at');if(r.error){err(r.error);return}TC=r.data;
+ var I=function(id,l){return h('div',{},h('label',{},l),h('input',{id:id}))};
+ var hs=h('select',{id:'tx'},[['any','Human flag: any'],['yes','Must need a human'],['no','Must not need a human']].map(function(o){return h('option',{value:o[0]},o[1])}));
+ var starter=[['hi','no'],['dam koto?','any'],['দাম কত? ডেলিভারি কত দিনে পাবো?','any'],['Can I get a 20% discount?','yes'],['My order arrived damaged, I want a refund','yes'],['How many pieces do you have in stock exactly?','any'],['asdf ghjk','yes']];
+ p.replaceChildren(h('div',{class:'card'},h('b',{},'Test set'),h('br'),h('small',{},'Fixed customer messages the agent must handle well. Each run uses one call from the daily limit. A reply with an exact stock count always fails.'),
+  I('tt','Customer message'),hs,I('ti','Reply must include (comma list)'),I('te','Reply must not include (comma list)'),
+  h('p',{class:'ac'},h('button',{class:'gh',onclick:function(){addCases(starter.map(function(s){return{customer_text:s[0],expect_human:s[1]}}))}},'Add starter cases'),
+   h('button',{class:'gh',onclick:function(){var t=$('#tt').value.trim();if(t)addCases([{customer_text:t,expect_human:$('#tx').value,must_include:$('#ti').value,must_exclude:$('#te').value}])}},'Add case'),
+   h('button',{class:'pri',onclick:function(){runList(TC)}},'Run all ('+TC.length+' calls)'))),
+  TC.map(function(t){return h('div',{class:'card'},h('div',{class:'r1'},h('b',{},t.customer_text),tg(t.last_ok==null?'Not run':t.last_ok?'Pass':'Fail',t.last_ok===false?'wn':t.last_ok?'ok':'')),h('div',{class:'r2',style:'white-space:normal'},t.last_reply||''),
+   h('p',{class:'ac'},h('button',{class:'gh',onclick:async function(){var d=await sb.from('umb_test_cases').delete().eq('id',t.id);if(d.error)err(d.error);else renderTest()}},'Delete'),h('button',{class:'gh',onclick:function(){runList([t])}},'Run')))}))}
+$('#cc').addEventListener('click',async function(){CFG={url:$('#cu').value.trim(),key:$('#ck').value.trim()};store.set('cfg',CFG);var s=$('#cst');s.textContent='Connecting...';try{await connect($('#ce').value.trim(),$('#cw').value);s.textContent='Connected as '+ROLE;$('#cw').value=''}catch(e){sb=null;s.textContent='Could not connect: '+((e&&e.message)||e)}});
+$('#cx').addEventListener('click',async function(){if(sb)await sb.auth.signOut();sb=null;BIZ=null;PR=[];convs=store.get('convs',null)||[];$('#kpw').hidden=false;$('#cst').textContent='Signed out';render()});
+
+var drafter=function(c){
+ var base=localDraft(c);if(sb)return aiDraft(c,base);if(!KB.url)return Promise.resolve(base);
+ return fetch(KB.url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({conversation:c.msgs,kb:{products:KB.products,delivery:KB.ship,hours:KB.hours,tone:KB.tone}})})
+  .then(function(r){return r.json()}).then(function(j){if(j&&j.text)base.text=String(j.text);return base}).catch(function(){return base})};
+
+async function ingest(m){
+ var c=convs.filter(function(x){return x.name===m.name&&x.ch===m.ch})[0];
+ if(!c){c={id:"c"+Date.now()+Math.random().toString(36).slice(2,5),name:m.name,ch:m.ch,stage:"New",score:15,intent:"",human:false,unread:0,msgs:[],draft:""};convs.unshift(c)}
+ if(sb&&!c.cid)await dbNew(c);c.msgs.push({r:"c",t:m.text,ts:Date.now()});c.unread++;if(sb)await dbIn(c,m.text);
+ var d=await drafter(c);c.draft=d.text;c.intent=d.intent;c.score=d.score;c.human=d.human;
+ if(c.stage==="New"&&d.score>=40)c.stage="Interested";if(sb)await dbSave(c);
+ persist();emit("message",{id:c.id,text:m.text});emit("draft",{id:c.id,text:c.draft});render();return c}
+
+function send(){var c=get(cur);if(!c)return;var t=(c.draft||"").trim();if(!t)return;if(sb){approve(c,t);return}
+ c.msgs.push({r:"a",t:t,ts:Date.now()});c.draft="";persist();emit("sent",{id:c.id,channel:c.ch,text:t});render()}
+
+var tg=function(t,k){return h("span",{class:"tg "+(k||"")},t)};
+function render(){var pl=$(".pill");if(pl)pl.textContent=sb?"● Live data":"● Demo mode";
+ var open=convs.filter(function(c){return c.stage!=="Won"&&c.stage!=="Lost"}).length;
+ var avg=convs.length?Math.round(convs.reduce(function(a,c){return a+c.score},0)/convs.length):0;
+ $("#m").replaceChildren.apply($("#m"),[["Chats",convs.length],["Open leads",open],["Won",convs.filter(function(c){return c.stage==="Won"}).length],["Avg lead score",avg],["Need a human",convs.filter(function(c){return c.human}).length]].map(function(a){return h("div",{class:"k"},h("b",{},String(a[1])),h("span",{},a[0]))}));
+ $("#st").textContent=sb?"Live data from your Supabase project. Approving a reply saves it as approved; nothing reaches customers until a channel is connected. Simulated messages create test customers. "+(AI.msg?AI.msg+" ":"")+usageText():KB.url?"Drafts come from your backend and fall back to local rules if it fails. Sent replies stay in this browser until a channel is connected.":"Demo mode: drafts use local rules, and sent replies stay in this browser until a channel is connected.";
+ var rows=convs.map(function(c){var last=c.msgs[c.msgs.length-1];
+  return h("button",{class:"row"+(c.id===cur?" on":""),onclick:function(){cur=c.id;c.unread=0;persist();document.body.classList.add("chat");render()}},
+   h("div",{class:"r1"},h("b",{},c.name),h("small",{},CH[c.ch])),
+   h("div",{class:"r2"},last?last.t:""),
+   h("div",{},tg(c.stage),c.intent?tg(c.intent):null,tg("Score "+c.score),c.human?tg("Needs a human","wn"):null,c.unread?tg("New reply","ok"):null))});
+ $("#lst").replaceChildren.apply($("#lst"),rows.length?rows:[h("div",{class:"em"},"No conversations yet. Use Simulate message to add one.")]);
+ renderChat()}
+
+function renderChat(){
+ var p=$("#cv"),c=get(cur);
+ if(!c){p.replaceChildren(h("div",{class:"em"},"Select a conversation to see the customer thread and the AI draft."));return}
+ var lc=c.msgs.slice().reverse().filter(function(m){return m.r==="c"})[0],win=lc&&Date.now()-lc.ts<864e5;
+ var sel=h("select",{"aria-label":"Pipeline stage",onchange:function(e){c.stage=e.target.value;persist();emit("stage",{id:c.id,stage:c.stage});render()}},STAGES.map(function(s){return h("option",{value:s},s)}));sel.value=c.stage;
+ var feed=h("div",{class:"fd"},c.msgs.map(function(m){return h("div",{class:"b "+m.r},m.t+(m.st==="approved"?" (approved, waiting for a channel)":""))}));
+ var ta=h("textarea",{rows:"3","aria-label":"Reply",oninput:function(e){c.draft=e.target.value;persist()}});ta.value=c.draft;
+ p.replaceChildren(
+  h("div",{class:"ph"},h("button",{class:"gh bk",onclick:function(){document.body.classList.remove("chat")}},"Back"),
+   h("div",{class:"gr"},h("b",{},c.name),h("small",{},CH[c.ch]+": "+(win?"24 hour reply window open":"window closed, approved template needed"))),sel),
+  feed,
+  h("div",{class:"cp"},h("div",{class:"lb"},c.human?"AI draft: a person should review this":"AI draft: edit it, then approve"),ta,
+   h("div",{class:"ac"},
+    h("button",{class:"gh",onclick:function(){drafter(c).then(function(d){c.draft=d.text;persist();renderChat()})}},"Regenerate"),
+    h("button",{class:"gh",onclick:function(){c.draft="";persist();renderChat()}},"Clear"),
+    h("button",{class:"pri",onclick:send},"Approve and send"))));
+ var lt=lc?lc.t.toLowerCase():"",ip=prods().filter(function(p){return p.n.toLowerCase().split(" ").some(function(w){return w.length>2&&lt.indexOf(w)>-1})})[0];
+ if(ip)feed.after(h("div",{class:"sf"},"Staff only, never sent: "+ip.n+", "+ip.p+", "+(ip.s>0?ip.s+" in stock":"out of stock")+(ip.z?", sizes "+ip.z:"")));
+ feed.scrollTop=feed.scrollHeight}
+
+function tab(t){["inbox","camp","set","prod","test"].forEach(function(s){$("#t-"+s).hidden=s!==t});
+ document.querySelectorAll("[data-t]").forEach(function(b){b.classList.toggle("active",b.dataset.t===t)});$("#pt").textContent={inbox:"AI Reply Drafts",camp:"Campaign Copy",prod:"Products",test:"Test set",set:"Settings & Data"}[t];
+ if(t==="prod")renderProd();if(t==="test")renderTest();
+ if(t==="camp")$("#cp").replaceChildren.apply($("#cp"),prods().map(function(p){return h("option",{},p.n)}));
+ if(t==="set"){$("#kp").value=KB.products;$("#ks").value=KB.ship;$("#kh").value=KB.hours;$("#kt").value=KB.tone;$("#ksk").value=KB.stk;$("#kzk").value=KB.szk;$("#ku").value=KB.url;$("#cu").value=CFG.url||"";$("#al").value=sb&&KB.lim!=null?KB.lim:200;$("#au").textContent=sb?usageText():"Applies when connected to Supabase.";$("#ck").value=CFG.key||"";$("#ex").value=JSON.stringify(api.getState(),null,1)}}
+
+function copy(t,b){try{navigator.clipboard.writeText(t).then(function(){b.textContent="Copied"}).catch(function(){b.textContent="Select and copy"})}catch(e){b.textContent="Select and copy"}}
+function camp(){var P=prods(),p=P[$("#cp").selectedIndex]||{n:"our product",p:""},n=p.n,pr=p.p||"available now",seg=$("#cs").value;
+ var cnt=convs.filter(function(c){return seg==="All"||c.stage===seg}).length;
+ var V={launch:["New in: "+n+" ("+pr+"). Be among the first to order.","Meet "+n+". "+pr+". Reply YES and we will reserve yours.","Just landed: "+n+". Limited stock, message us to order."],
+  restock:[n+" is back in stock. Reply to grab yours before it sells out.","Good news: "+n+" is available again ("+pr+"). Want us to hold one?","You asked, we restocked: "+n+". Reply YES to order."],
+  offer:["This week only on "+n+": [add your offer]. Reply to claim it.",n+" special: [add your offer]. Message us to order.","A little something for you: [add your offer] on "+n+"."],
+  follow:["Hi! Still thinking about "+n+"? Happy to answer any question.","Your "+n+" is waiting. Reply YES and we will confirm your order.","Quick reminder: "+n+" is "+pr+". Want us to reserve it?"]}[$("#cg").value];
+ $("#cout").replaceChildren(h("small",{},"Audience: "+cnt+" conversation"+(cnt===1?"":"s")+". On WhatsApp, messages outside the 24 hour window need an approved template and customer opt-in."),
+  V.map(function(v){var b=h("button",{class:"gh"},"Copy");b.addEventListener("click",function(){copy(v,b)});return h("div",{class:"cp2"},h("span",{},v),b)}))}
+
+var api=window.UmbrageAgent={version:"1.0",ingest:ingest,setDrafter:function(f){drafter=f},on:function(t,f){(L[t]=L[t]||[]).push(f)},getState:function(){return JSON.parse(JSON.stringify({kb:KB,conversations:convs}))}};
+
+document.querySelectorAll("[data-t]").forEach(function(b){b.addEventListener("click",function(){tab(b.dataset.t)})});
+$("#sim").addEventListener("click",function(){$("#dlg").showModal()});
+$("#dx").addEventListener("click",function(){$("#dlg").close()});
+$("#dg").addEventListener("click",async function(){var n=$("#sn").value.trim(),t=$("#sm").value.trim();if(!n||!t)return;
+ var c=await ingest({name:n,ch:$("#sc").value,text:t});cur=c.id;c.unread=0;document.body.classList.add("chat");tab("inbox");render();$("#dlg").close()});
+$("#gen").addEventListener("click",camp);
+$("#sv").addEventListener("click",function(){KB={products:$("#kp").value,ship:$("#ks").value.trim(),hours:$("#kh").value.trim(),tone:$("#kt").value,stk:$("#ksk").value,szk:$("#kzk").value,url:$("#ku").value.trim(),lim:(function(n){return isNaN(n)?200:Math.max(0,n)})(parseInt($("#al").value,10))};store.set("kb",KB);if(sb)sb.from("umb_settings").upsert({business_id:BIZ,show_stock:KB.stk,show_sizes:KB.szk!=="off",tone:KB.tone,delivery:KB.ship,hours:KB.hours,ai_daily_limit:KB.lim}).then(function(r){if(r.error)err(r.error)});emit("settings",{});render();$("#sv").textContent="Saved";setTimeout(function(){$("#sv").textContent="Save settings"},1500)});
+$("#clr").addEventListener("click",function(){convs=[];cur=null;persist();render();tab("set")});
+$("#cpx").addEventListener("click",function(){copy($("#ex").value,$("#cpx"))});
+
+(async function init(){
+ await boot();if(!convs&&!sb){convs=[];await ingest({name:"Rahim A.",ch:"whatsapp",text:"Hi, how much is the Hoodie?"});await ingest({name:"Nadia",ch:"instagram",text:"Is the Cap available in black?"})}
+ render()})();
+})();
+</script>
+</body>
+</html>
