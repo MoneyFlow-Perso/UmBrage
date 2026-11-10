@@ -71,9 +71,10 @@ dialog::backdrop{background:#000b}
 .mobilebar{display:none}
 @media(max-width:850px){.app{display:block}.sidebar{display:none}.main{padding:18px 14px 95px}.ms{grid-template-columns:repeat(2,minmax(0,1fr))}.ms .k:last-child{grid-column:1/-1}.ib{grid-template-columns:1fr}.ib .cv{display:none}body.chat .ib .ls{display:none}body.chat .ib .cv{display:flex}.bk{display:inline-block}.b{max-width:90%}.pane{height:calc(100dvh - 300px)}.top-actions .pill{display:none}dialog{margin:auto auto 12px}
 .mobilebar{display:flex;position:fixed;z-index:10;bottom:0;left:0;right:0;background:#0b110ef5;border-top:1px solid var(--line);padding:7px 4px calc(7px + env(safe-area-inset-bottom,0px));justify-content:space-around;backdrop-filter:blur(12px)}
-.mobilebar button{background:none;border:0;color:#8fa094;font-size:10px;display:grid;justify-items:center;gap:3px;padding:4px 14px}.mobilebar button.active{color:var(--green)}.mobilebar span{font-size:18px}}
+.mobilebar button{background:none;border:0;color:#8fa094;font-size:10px;display:grid;justify-items:center;gap:3px;padding:4px 8px}.mobilebar button.active{color:var(--green)}.mobilebar span{font-size:18px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 .gt{border-collapse:collapse;font-size:12px}.gt th{padding:4px 8px;text-align:left;color:var(--muted);font-weight:600;white-space:nowrap}.gt td{padding:3px}.gt input{width:74px;padding:6px}.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}#pl .card{max-width:760px}
+.chips{display:flex;gap:8px;padding:9px 12px;border-bottom:1px solid #202c24}.chips .gh{padding:6px 11px;font-size:12px}.chips .gh.on{border-color:var(--green);color:var(--green)}.b .gh{margin-top:6px;padding:5px 9px;font-size:11px;background:#0d1a10;color:var(--green);border-color:#0d1a10}#ll .card{max-width:760px}
 </style>
 </head>
 <body>
@@ -85,6 +86,7 @@ dialog::backdrop{background:#000b}
     <button data-t="inbox" class="active"><span class="ico">✉</span> AI Reply Drafts</button>
     <button data-t="camp"><span class="ico">⌕</span> Campaign Copy</button>
     <button data-t="prod"><span class="ico">▦</span> Products</button>
+    <button data-t="learn"><span class="ico">✎</span> Learning</button>
     <button data-t="test"><span class="ico">✓</span> Test set</button>
   </nav>
   <div class="navlabel">SYSTEM</div>
@@ -97,7 +99,7 @@ dialog::backdrop{background:#000b}
 <section class="ms" id="m" aria-label="Summary"></section>
 
 <section id="t-inbox" class="ib">
-  <div class="pane ls"><div class="ph"><b>Conversations</b><small>Sample chats at first</small></div><div class="sc" id="lst"></div></div>
+  <div class="pane ls"><div class="ph"><b>Conversations</b><small>Sample chats at first</small></div><div class="chips" id="flt" style="display:none"></div><div class="sc" id="lst"></div></div>
   <div class="pane cv" id="cv"></div>
 </section>
 
@@ -114,6 +116,7 @@ dialog::backdrop{background:#000b}
 
 <section id="t-prod" hidden><div id="pl"></div></section>
 <section id="t-test" hidden><div id="tl"></div></section>
+<section id="t-learn" hidden><div id="ll"></div></section>
 
 <section id="t-set" hidden>
   <div class="card">
@@ -134,6 +137,7 @@ dialog::backdrop{background:#000b}
     <label for="kzk">Sizes in chats</label><select id="kzk"><option value="on">On</option><option value="off">Off</option></select>
     <small>Exact stock counts are never sent in chats. Staff always see them in the Staff only line under each conversation.</small>
     <label for="al">Daily AI draft limit (0 turns AI off)</label><input id="al" type="number" min="0"><small id="au"></small>
+    <label for="fh">Follow up after this many quiet hours (1 to 20)</label><input id="fh" type="number" min="1" max="20">
     <label for="ku">AI backend URL (optional)</label><input id="ku" placeholder="https://your-server.example/draft">
     <small>Your server calls the AI model so keys never sit in the browser. It receives the chat and brand knowledge and returns {"text": "..."}.</small>
     <p class="ac"><button class="gh" id="clr">Clear all chats</button><button class="pri" id="sv">Save settings</button></p>
@@ -150,6 +154,7 @@ dialog::backdrop{background:#000b}
   <button data-t="inbox" class="active"><span>✉</span>Replies</button>
   <button data-t="camp"><span>⌕</span>Campaigns</button>
   <button data-t="prod"><span>▦</span>Products</button>
+  <button data-t="learn"><span>✎</span>Learn</button>
   <button data-t="test"><span>✓</span>Tests</button>
   <button data-t="set"><span>⚙</span>Settings</button>
 </nav>
@@ -216,12 +221,15 @@ async function loadAll(){
  var R=await Promise.all([q('umb_settings'),q('umb_products').order('name'),q('umb_variants').order('sort'),q('umb_stock'),q('umb_customers'),q('umb_conversations').order('last_message_at',{ascending:false}),q('umb_messages').order('created_at')]);
  var e=R.filter(function(x){return x.error})[0];if(e)throw e.error;
  var D=R.map(function(x){return x.data}),s=D[0][0];
- if(s)KB=Object.assign(KB,{ship:s.delivery,hours:s.hours,tone:s.tone,stk:s.show_stock,szk:s.show_sizes?'on':'off',lim:s.ai_daily_limit});
+ if(s)KB=Object.assign(KB,{ship:s.delivery,hours:s.hours,tone:s.tone,stk:s.show_stock,szk:s.show_sizes?'on':'off',lim:s.ai_daily_limit,fh:s.followup_hours});
  var qty={},cu={};D[3].forEach(function(k){qty[k.variant_id]=k.qty});D[4].forEach(function(c){cu[c.id]=c});
  PR=D[1].map(function(p){var v=D[2].filter(function(x){return x.product_id===p.id&&x.active}).map(function(x){return{id:x.id,z:x.size||'',c:x.color||'',q:qty[x.id]||0}});return{id:p.id,name:p.name,code:p.code||'',price:Number(p.price),description:p.description,pitch:p.pitch,active:p.active,v:v}});
  convs=D[5].map(function(c){var u=cu[c.customer_id]||{},ms=D[6].filter(function(m){return m.conversation_id===c.id}),dr=ms.filter(function(m){return m.status==='draft'})[0];
-  return{id:c.id,cid:c.customer_id,name:u.name||'Customer',ch:c.channel,stage:u.stage||'New',score:u.lead_score||0,intent:c.intent||'',human:c.needs_human,unread:c.unread_count,dr:dr?dr.id:null,draft:dr?dr.body:'',msgs:ms.filter(function(m){return m.status!=='draft'&&m.status!=='discarded'}).map(function(m){return{r:m.direction==='in'?'c':'a',t:m.body,ts:Date.parse(m.platform_ts||m.created_at),st:m.status}})}});
+  return{id:c.id,cid:c.customer_id,name:u.name||'Customer',ch:c.channel,stage:u.stage||'New',score:u.lead_score||0,intent:c.intent||'',human:c.needs_human,unread:c.unread_count,dr:dr?dr.id:null,draft:dr?dr.body:'',fk:!!(dr&&dr.kind==='followup'),aim:dr?(dr.ai_model||undefined):undefined,msgs:ms.filter(function(m){return m.status!=='draft'&&m.status!=='discarded'}).map(function(m){return{id:m.id,ed:!!m.edited,k:m.kind,r:m.direction==='in'?'c':'a',t:m.body,ts:Date.parse(m.platform_ts||m.created_at),st:m.status}})}});
  var us=await sb.from('umb_ai_usage').select('calls').eq('business_id',BIZ).eq('day',today()).maybeSingle();AI.used=us.data?us.data.calls:0;
+ FU={};SV={};
+ var fu=await sb.from('umb_followup_due').select('*').eq('business_id',BIZ);if(!fu.error)fu.data.forEach(function(x){FU[x.conversation_id]=x});
+ var lr=await sb.from('umb_learned_responses').select('source_message_id').eq('business_id',BIZ);if(!lr.error)lr.data.forEach(function(x){if(x.source_message_id)SV[x.source_message_id]=1});
  $('#kpw').hidden=true;render()}
 async function dbNew(c){
  var u=await sb.from('umb_customers').insert({business_id:BIZ,name:c.name}).select().single();if(u.error)throw u.error;
@@ -233,11 +241,11 @@ async function dbSave(c){
  var a=await sb.from('umb_conversations').update({intent:c.intent||null,needs_human:!!c.human,needs_human_reason:c.human?(c.hr||(c.intent==='complaint'?'complaint':c.intent==='discount'?'discount':'unknown_detail')):null,unread_count:c.unread}).eq('id',c.id);
  var b=await sb.from('umb_customers').update({stage:c.stage,lead_score:c.score}).eq('id',c.cid);
  var t=(c.draft||'').trim();
- if(c.dr&&!t){await sb.from('umb_messages').update({status:'discarded'}).eq('id',c.dr);c.dr=null}
- else if(c.dr){await sb.from('umb_messages').update({body:t,ai_model:c.aim||'local-rules'}).eq('id',c.dr)}
+ if(c.dr&&!t){await sb.from('umb_messages').update({status:'discarded'}).eq('id',c.dr);c.dr=null;c.fk=false}
+ else if(c.dr){await sb.from('umb_messages').update(c.aim?{body:t,ai_model:c.aim}:{body:t}).eq('id',c.dr)}
  else if(t){var r=await sb.from('umb_messages').insert({business_id:BIZ,conversation_id:c.id,direction:'out',status:'draft',body:t,ai_generated:true,ai_model:c.aim||'local-rules'}).select().single();if(r.data)c.dr=r.data.id}
  var e=[a,b].filter(function(x){return x.error})[0];if(e)throw e.error}
-async function approve(c,t){try{await dbSave(c);var r=await sb.from('umb_messages').update({status:'approved'}).eq('id',c.dr);if(r.error)throw r.error;c.msgs.push({r:'a',t:t,ts:Date.now(),st:'approved'});c.draft='';c.dr=null;emit('approved',{id:c.id,text:t});render()}catch(e){err(e)}}
+async function approve(c,t){try{await dbSave(c);var r=await sb.from('umb_messages').update({status:'approved'}).eq('id',c.dr).select('id,edited,kind').single();if(r.error)throw r.error;c.msgs.push({id:r.data.id,ed:!!r.data.edited,k:r.data.kind,r:'a',t:t,ts:Date.now(),st:'approved'});delete FU[c.id];c.fk=false;c.draft='';c.dr=null;emit('approved',{id:c.id,text:t});render()}catch(e){err(e)}}
 
 function renderProd(){var p=$('#pl');
  if(!sb){p.replaceChildren(h('div',{class:'notice'},'Connect your Supabase project in Settings & Data to manage products. In demo mode, edit the product lines in Settings.'));return}
@@ -276,7 +284,7 @@ async function saveProd(p,box){try{
  for(var x of ex.data){if(x.active&&!keep[x.id]){var o=await sb.from('umb_variants').update({active:false}).eq('id',x.id);if(o.error)throw o.error}}
  await loadAll();renderProd();$('#st').textContent='Saved '+row.name
 }catch(e){err(e)}}
-var AI={used:0,msg:''},TC=[];
+var AI={used:0,msg:''},TC=[],FU={},SV={},FLT='all';
 window.addEventListener('unhandledrejection',function(e){err(e.reason)});
 function today(){return new Date(Date.now()+216e5).toISOString().slice(0,10)}
 function usageText(){return KB.lim>0?'AI drafts today: '+AI.used+' of '+KB.lim+'.':'AI drafting is off.'}
@@ -289,6 +297,49 @@ async function aiDraft(c,base){
  var j=r.data;if(!j||typeof j.left!=='number'){AI.msg='Unexpected reply from the AI function: '+JSON.stringify(j).slice(0,160)+'. Using local rules.';return base}AI.used=KB.lim-j.left;
  if(!j.text){AI.msg='The AI gave no usable reply. Using local rules, flagged for a human.';base.human=true;return base}
  AI.msg='';base.text=j.text;base.intent=j.intent||base.intent;base.human=!!j.needs_human||base.intent==='complaint'||base.intent==='discount';c.hr=j.reason||null;c.aim=j.model;return base}
+function localFollow(c){
+ var last=c.msgs.slice().reverse().filter(function(m){return m.r==="c"})[0],tx=last?last.t:"",low=tx.toLowerCase(),first=c.name.split(" ")[0];
+ var pr=prods().filter(function(p){return p.n.toLowerCase().split(" ").some(function(w){return w.length>2&&low.indexOf(w)>-1})})[0];
+ if(/[\u0980-\u09FF]/.test(tx))return first+", আপনার কোনো প্রশ্ন থাকলে জানাবেন। আমরা সাহায্য করতে প্রস্তুত।";
+ return "Hi "+first+"! "+(pr?"Still thinking about "+pr.n+"? ":"")+"Happy to answer any questions or help you place your order."}
+async function followDraft(c){try{
+ var text="",model="local-rules";
+ if(c.dr){var o=await sb.from("umb_messages").update({status:"discarded"}).eq("id",c.dr);if(o.error)throw o.error;c.dr=null;c.draft=""}
+ if(KB.lim>0){
+  var r=await sb.functions.invoke("umb-draft",{body:{conversation_id:c.id,mode:"followup"}});
+  if(r.error){var m=await aiErr(r.error);
+   if(m==="window_closed"){AI.msg="The 24 hour reply window has closed, so no follow-up can be sent.";delete FU[c.id];render();return}
+   AI.msg=m==="limit"?"Daily AI limit reached ("+KB.lim+"). Using a plain follow-up.":"AI follow-up failed ("+m+"). Using a plain follow-up.";if(m==="limit")AI.used=KB.lim}
+  else if(r.data&&r.data.text&&typeof r.data.left==="number"){text=r.data.text;model=r.data.model;AI.used=KB.lim-r.data.left;AI.msg=""}
+  else AI.msg="The AI gave no usable follow-up. Using a plain follow-up."
+ }else AI.msg="AI drafting is off (limit 0). Using a plain follow-up.";
+ if(!text)text=localFollow(c);
+ var ins=await sb.from("umb_messages").insert({business_id:BIZ,conversation_id:c.id,direction:"out",status:"draft",kind:"followup",body:text,ai_generated:true,ai_model:model}).select().single();
+ if(ins.error)throw ins.error;
+ c.dr=ins.data.id;c.draft=text;c.fk=true;c.aim=model;render()}catch(e){err(e)}}
+async function regen(c){try{
+ if(c.fk){await followDraft(c);return}
+ var d=await drafter(c);
+ if(sb&&c.dr){var o=await sb.from("umb_messages").update({status:"discarded"}).eq("id",c.dr);if(o.error)throw o.error;c.dr=null}
+ c.draft=d.text;persist();renderChat()}catch(e){err(e)}}
+async function saveExample(id){try{var r=await sb.rpc("umb_learn_from_message",{p_message:id});if(r.error)throw r.error;SV[id]=1;$("#st").style.borderColor="";$("#st").textContent="Saved. Open Learning to review it. Only approved examples reach the AI.";renderChat()}catch(e){err(e)}}
+var LG={bn:"Bangla",banglish:"Banglish",en:"English"};
+function learnCard(x){
+ var ta=h("textarea",{rows:"3","aria-label":"Approved reply"}),lg=h("select",{"aria-label":"Language"},Object.keys(LG).map(function(k){return h("option",{value:k},LG[k])}));
+ ta.value=x.approved_reply;lg.value=x.language;
+ var go=async function(st){try{var r=await sb.rpc("umb_learn_review",{p_id:x.id,p_status:st,p_reply:ta.value,p_language:lg.value});if(r.error)throw r.error;$("#st").style.borderColor="";$("#st").textContent=st==="approved"?"Example approved. The AI can use it as a style guide.":"Example rejected.";renderLearn()}catch(e){err(e)}};
+ return h("div",{class:"card"},h("small",{},"Customer wrote"),h("div",{class:"r2",style:"white-space:normal"},x.customer_text),
+  h("label",{},"Approved reply (remove any name, phone or address still in it)"),ta,h("label",{},"Language"),lg,
+  h("p",{class:"ac"},h("button",{class:"gh",onclick:function(){go("rejected")}},"Reject"),h("button",{class:"pri",onclick:function(){go("approved")}},"Approve")))}
+function usedCard(x){return h("div",{class:"card"},h("div",{class:"r2",style:"white-space:normal"},(LG[x.language]||"")+": "+x.customer_text),h("div",{class:"r2",style:"white-space:normal;color:var(--text)"},x.approved_reply),
+  h("p",{class:"ac"},h("button",{class:"gh",onclick:async function(){try{var r=await sb.rpc("umb_learn_review",{p_id:x.id,p_status:"rejected"});if(r.error)throw r.error;renderLearn()}catch(e){err(e)}}},"Stop using")))}
+async function renderLearn(){var p=$("#ll");
+ if(!sb){p.replaceChildren(h("div",{class:"notice"},"Connect Supabase in Settings & Data to use learning."));return}
+ var r=await sb.from("umb_learned_responses").select("*").eq("business_id",BIZ).neq("status","rejected").order("created_at",{ascending:false}).limit(60);
+ if(r.error){err(r.error);return}
+ var pe=r.data.filter(function(x){return x.status==="pending"}),ok=r.data.filter(function(x){return x.status==="approved"});
+ var kids=[h("div",{class:"card"},h("b",{},"Learning"),h("br"),h("small",{},"Edit an AI draft, approve it, then tap Save as example under that reply. Review it here. Only approved examples reach the AI, and only as a style guide. "+pe.length+" waiting, "+ok.length+" approved."))].concat(pe.map(learnCard),ok.length?[h("div",{class:"card"},h("b",{},"Approved examples"))]:[],ok.map(usedCard));
+ p.replaceChildren.apply(p,kids)}
 async function runCase(t){
  var r=await sb.functions.invoke('umb-draft',{body:{business_id:BIZ,text:t.customer_text}});
  if(r.error){var m=await aiErr(r.error);return{stop:m==='limit'?'Daily AI limit reached.':m}}
@@ -328,6 +379,7 @@ async function ingest(m){
  var c=convs.filter(function(x){return x.name===m.name&&x.ch===m.ch})[0];
  if(!c){c={id:"c"+Date.now()+Math.random().toString(36).slice(2,5),name:m.name,ch:m.ch,stage:"New",score:15,intent:"",human:false,unread:0,msgs:[],draft:""};convs.unshift(c)}
  if(sb&&!c.cid)await dbNew(c);c.msgs.push({r:"c",t:m.text,ts:Date.now()});c.unread++;if(sb)await dbIn(c,m.text);
+ if(sb&&c.dr){var od=await sb.from('umb_messages').update({status:'discarded'}).eq('id',c.dr);if(od.error)throw od.error;c.dr=null;c.fk=false;c.draft=''}
  var d=await drafter(c);c.draft=d.text;c.intent=d.intent;c.score=d.score;c.human=d.human;
  if(c.stage==="New"&&d.score>=40)c.stage="Interested";if(sb)await dbSave(c);
  persist();emit("message",{id:c.id,text:m.text});emit("draft",{id:c.id,text:c.draft});render();return c}
@@ -341,12 +393,13 @@ function render(){var pl=$(".pill");if(pl)pl.textContent=sb?"● Live data":"●
  var avg=convs.length?Math.round(convs.reduce(function(a,c){return a+c.score},0)/convs.length):0;
  $("#m").replaceChildren.apply($("#m"),[["Chats",convs.length],["Open leads",open],["Won",convs.filter(function(c){return c.stage==="Won"}).length],["Avg lead score",avg],["Need a human",convs.filter(function(c){return c.human}).length]].map(function(a){return h("div",{class:"k"},h("b",{},String(a[1])),h("span",{},a[0]))}));
  $("#st").textContent=sb?"Live data from your Supabase project. Approving a reply saves it as approved; nothing reaches customers until a channel is connected. Simulated messages create test customers. "+(AI.msg?AI.msg+" ":"")+usageText():KB.url?"Drafts come from your backend and fall back to local rules if it fails. Sent replies stay in this browser until a channel is connected.":"Demo mode: drafts use local rules, and sent replies stay in this browser until a channel is connected.";
- var rows=convs.map(function(c){var last=c.msgs[c.msgs.length-1];
+ var rows=(FLT==="fu"&&sb?convs.filter(function(c){return FU[c.id]}):convs).map(function(c){var last=c.msgs[c.msgs.length-1];
   return h("button",{class:"row"+(c.id===cur?" on":""),onclick:function(){cur=c.id;c.unread=0;persist();document.body.classList.add("chat");render()}},
    h("div",{class:"r1"},h("b",{},c.name),h("small",{},CH[c.ch])),
    h("div",{class:"r2"},last?last.t:""),
-   h("div",{},tg(c.stage),c.intent?tg(c.intent):null,tg("Score "+c.score),c.human?tg("Needs a human","wn"):null,c.unread?tg("New reply","ok"):null))});
- $("#lst").replaceChildren.apply($("#lst"),rows.length?rows:[h("div",{class:"em"},"No conversations yet. Use Simulate message to add one.")]);
+   h("div",{},tg(c.stage),c.intent?tg(c.intent):null,tg("Score "+c.score),c.human?tg("Needs a human","wn"):null,c.unread?tg("New reply","ok"):null,FU[c.id]?tg("Follow-up due, "+Math.max(0,Math.floor(Number(FU[c.id].hours_left)))+"h left","wn"):null))});
+ var fl=$("#flt");if(fl){fl.style.display=sb?"flex":"none";fl.replaceChildren.apply(fl,[["all","All"],["fu","Follow-ups ("+Object.keys(FU).length+")"]].map(function(o){return h("button",{class:"gh"+(FLT===o[0]?" on":""),onclick:function(){FLT=o[0];render()}},o[1])}))}
+ $("#lst").replaceChildren.apply($("#lst"),rows.length?rows:[h("div",{class:"em"},FLT==="fu"&&sb?"No chats are due for a follow-up.":"No conversations yet. Use Simulate message to add one.")]);
  renderChat()}
 
 function renderChat(){
@@ -354,26 +407,27 @@ function renderChat(){
  if(!c){p.replaceChildren(h("div",{class:"em"},"Select a conversation to see the customer thread and the AI draft."));return}
  var lc=c.msgs.slice().reverse().filter(function(m){return m.r==="c"})[0],win=lc&&Date.now()-lc.ts<864e5;
  var sel=h("select",{"aria-label":"Pipeline stage",onchange:function(e){c.stage=e.target.value;persist();emit("stage",{id:c.id,stage:c.stage});render()}},STAGES.map(function(s){return h("option",{value:s},s)}));sel.value=c.stage;
- var feed=h("div",{class:"fd"},c.msgs.map(function(m){return h("div",{class:"b "+m.r},m.t+(m.st==="approved"?" (approved, waiting for a channel)":""))}));
+ var feed=h("div",{class:"fd"},c.msgs.map(function(m){var b=h("div",{class:"b "+m.r},m.t+(m.st==="approved"?" (approved, waiting for a channel)":""));
+  if(sb&&m.r==="a"&&m.id&&m.ed&&m.k!=="followup"&&!SV[m.id])b.append(h("div",{},h("button",{class:"gh",onclick:function(){saveExample(m.id)}},"Save as example")));return b}));
  var ta=h("textarea",{rows:"3","aria-label":"Reply",oninput:function(e){c.draft=e.target.value;persist()}});ta.value=c.draft;
  p.replaceChildren(
   h("div",{class:"ph"},h("button",{class:"gh bk",onclick:function(){document.body.classList.remove("chat")}},"Back"),
    h("div",{class:"gr"},h("b",{},c.name),h("small",{},CH[c.ch]+": "+(win?"24 hour reply window open":"window closed, approved template needed"))),sel),
   feed,
-  h("div",{class:"cp"},h("div",{class:"lb"},c.human?"AI draft: a person should review this":"AI draft: edit it, then approve"),ta,
+  h("div",{class:"cp"},h("div",{class:"lb"},c.fk?"Follow-up draft: edit it, then approve":c.human?"AI draft: a person should review this":"AI draft: edit it, then approve"),(sb&&FU[c.id]&&!c.draft?h("div",{class:"sf"},"This chat went quiet. The reply window closes in about "+Math.max(0,Math.floor(Number(FU[c.id].hours_left)))+" hours. ",h("button",{class:"pri",onclick:function(){followDraft(c)}},"Draft follow-up")):null),ta,
    h("div",{class:"ac"},
-    h("button",{class:"gh",onclick:function(){drafter(c).then(function(d){c.draft=d.text;persist();renderChat()})}},"Regenerate"),
+    h("button",{class:"gh",onclick:function(){regen(c)}},"Regenerate"),
     h("button",{class:"gh",onclick:function(){c.draft="";persist();renderChat()}},"Clear"),
     h("button",{class:"pri",onclick:send},"Approve and send"))));
  var lt=lc?lc.t.toLowerCase():"",ip=prods().filter(function(p){return p.n.toLowerCase().split(" ").some(function(w){return w.length>2&&lt.indexOf(w)>-1})})[0];
  if(ip)feed.after(h("div",{class:"sf"},"Staff only, never sent: "+ip.n+", "+ip.p+", "+(ip.s>0?ip.s+" in stock":"out of stock")+(ip.z?", sizes "+ip.z:"")));
  feed.scrollTop=feed.scrollHeight}
 
-function tab(t){["inbox","camp","set","prod","test"].forEach(function(s){$("#t-"+s).hidden=s!==t});
- document.querySelectorAll("[data-t]").forEach(function(b){b.classList.toggle("active",b.dataset.t===t)});$("#pt").textContent={inbox:"AI Reply Drafts",camp:"Campaign Copy",prod:"Products",test:"Test set",set:"Settings & Data"}[t];
- if(t==="prod")renderProd();if(t==="test")renderTest();
+function tab(t){["inbox","camp","set","prod","test","learn"].forEach(function(s){$("#t-"+s).hidden=s!==t});
+ document.querySelectorAll("[data-t]").forEach(function(b){b.classList.toggle("active",b.dataset.t===t)});$("#pt").textContent={inbox:"AI Reply Drafts",camp:"Campaign Copy",prod:"Products",test:"Test set",learn:"Learning",set:"Settings & Data"}[t];
+ if(t==="prod")renderProd();if(t==="test")renderTest();if(t==="learn")renderLearn();
  if(t==="camp")$("#cp").replaceChildren.apply($("#cp"),prods().map(function(p){return h("option",{},p.n)}));
- if(t==="set"){$("#kp").value=KB.products;$("#ks").value=KB.ship;$("#kh").value=KB.hours;$("#kt").value=KB.tone;$("#ksk").value=KB.stk;$("#kzk").value=KB.szk;$("#ku").value=KB.url;$("#cu").value=CFG.url||"";$("#al").value=sb&&KB.lim!=null?KB.lim:200;$("#au").textContent=sb?usageText():"Applies when connected to Supabase.";$("#ck").value=CFG.key||"";$("#ex").value=JSON.stringify(api.getState(),null,1)}}
+ if(t==="set"){$("#kp").value=KB.products;$("#ks").value=KB.ship;$("#kh").value=KB.hours;$("#kt").value=KB.tone;$("#ksk").value=KB.stk;$("#kzk").value=KB.szk;$("#ku").value=KB.url;$("#cu").value=CFG.url||"";$("#al").value=sb&&KB.lim!=null?KB.lim:200;$("#au").textContent=sb?usageText():"Applies when connected to Supabase.";$("#ck").value=CFG.key||"";$("#fh").value=KB.fh||4;$("#ex").value=JSON.stringify(api.getState(),null,1)}}
 
 function copy(t,b){try{navigator.clipboard.writeText(t).then(function(){b.textContent="Copied"}).catch(function(){b.textContent="Select and copy"})}catch(e){b.textContent="Select and copy"}}
 function camp(){var P=prods(),p=P[$("#cp").selectedIndex]||{n:"our product",p:""},n=p.n,pr=p.p||"available now",seg=$("#cs").value;
@@ -393,7 +447,7 @@ $("#dx").addEventListener("click",function(){$("#dlg").close()});
 $("#dg").addEventListener("click",async function(){var n=$("#sn").value.trim(),t=$("#sm").value.trim();if(!n||!t)return;
  var c=await ingest({name:n,ch:$("#sc").value,text:t});cur=c.id;c.unread=0;document.body.classList.add("chat");tab("inbox");render();$("#dlg").close()});
 $("#gen").addEventListener("click",camp);
-$("#sv").addEventListener("click",function(){KB={products:$("#kp").value,ship:$("#ks").value.trim(),hours:$("#kh").value.trim(),tone:$("#kt").value,stk:$("#ksk").value,szk:$("#kzk").value,url:$("#ku").value.trim(),lim:(function(n){return isNaN(n)?200:Math.max(0,n)})(parseInt($("#al").value,10))};store.set("kb",KB);if(sb)sb.from("umb_settings").upsert({business_id:BIZ,show_stock:KB.stk,show_sizes:KB.szk!=="off",tone:KB.tone,delivery:KB.ship,hours:KB.hours,ai_daily_limit:KB.lim}).then(function(r){if(r.error)err(r.error)});emit("settings",{});render();$("#sv").textContent="Saved";setTimeout(function(){$("#sv").textContent="Save settings"},1500)});
+$("#sv").addEventListener("click",function(){KB={products:$("#kp").value,ship:$("#ks").value.trim(),hours:$("#kh").value.trim(),tone:$("#kt").value,stk:$("#ksk").value,szk:$("#kzk").value,url:$("#ku").value.trim(),lim:(function(n){return isNaN(n)?200:Math.max(0,n)})(parseInt($("#al").value,10)),fh:(function(n){return isNaN(n)?4:Math.min(20,Math.max(1,n))})(parseInt($("#fh").value,10))};store.set("kb",KB);if(sb)sb.from("umb_settings").upsert({business_id:BIZ,show_stock:KB.stk,show_sizes:KB.szk!=="off",tone:KB.tone,delivery:KB.ship,hours:KB.hours,ai_daily_limit:KB.lim,followup_hours:KB.fh}).then(function(r){if(r.error)err(r.error)});emit("settings",{});render();$("#sv").textContent="Saved";setTimeout(function(){$("#sv").textContent="Save settings"},1500)});
 $("#clr").addEventListener("click",function(){convs=[];cur=null;persist();render();tab("set")});
 $("#cpx").addEventListener("click",function(){copy($("#ex").value,$("#cpx"))});
 
