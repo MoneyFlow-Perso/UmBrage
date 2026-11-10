@@ -302,9 +302,12 @@ function localFollow(c){
  var pr=prods().filter(function(p){return p.n.toLowerCase().split(" ").some(function(w){return w.length>2&&low.indexOf(w)>-1})})[0];
  if(/[\u0980-\u09FF]/.test(tx))return first+", আপনার কোনো প্রশ্ন থাকলে জানাবেন। আমরা সাহায্য করতে প্রস্তুত।";
  return "Hi "+first+"! "+(pr?"Still thinking about "+pr.n+"? ":"")+"Happy to answer any questions or help you place your order."}
-async function followDraft(c){try{
+var BUSY={};
+async function dropOpenDrafts(c){var o=await sb.from("umb_messages").update({status:"discarded"}).eq("conversation_id",c.id).eq("status","draft");if(o.error)throw o.error;c.dr=null;c.draft="";c.fk=false}
+async function followDraft(c){if(BUSY[c.id])return;BUSY[c.id]=1;try{
+ $("#st").style.borderColor="";$("#st").textContent="Drafting a follow-up, please wait. One tap is enough.";
  var text="",model="local-rules";
- if(c.dr){var o=await sb.from("umb_messages").update({status:"discarded"}).eq("id",c.dr);if(o.error)throw o.error;c.dr=null;c.draft=""}
+ await dropOpenDrafts(c);
  if(KB.lim>0){
   var r=await sb.functions.invoke("umb-draft",{body:{conversation_id:c.id,mode:"followup"}});
   if(r.error){var m=await aiErr(r.error);
@@ -316,12 +319,13 @@ async function followDraft(c){try{
  if(!text)text=localFollow(c);
  var ins=await sb.from("umb_messages").insert({business_id:BIZ,conversation_id:c.id,direction:"out",status:"draft",kind:"followup",body:text,ai_generated:true,ai_model:model}).select().single();
  if(ins.error)throw ins.error;
- c.dr=ins.data.id;c.draft=text;c.fk=true;c.aim=model;render()}catch(e){err(e)}}
-async function regen(c){try{
- if(c.fk){await followDraft(c);return}
+ c.dr=ins.data.id;c.draft=text;c.fk=true;c.aim=model;render()}catch(e){err(e)}finally{delete BUSY[c.id]}}
+async function regen(c){if(c.fk){await followDraft(c);return}
+ if(BUSY[c.id])return;BUSY[c.id]=1;try{
+ $("#st").style.borderColor="";$("#st").textContent="Regenerating, please wait.";
  var d=await drafter(c);
- if(sb&&c.dr){var o=await sb.from("umb_messages").update({status:"discarded"}).eq("id",c.dr);if(o.error)throw o.error;c.dr=null}
- c.draft=d.text;persist();renderChat()}catch(e){err(e)}}
+ if(sb)await dropOpenDrafts(c);
+ c.draft=d.text;persist();render()}catch(e){err(e)}finally{delete BUSY[c.id]}}
 async function saveExample(id){try{var r=await sb.rpc("umb_learn_from_message",{p_message:id});if(r.error)throw r.error;SV[id]=1;$("#st").style.borderColor="";$("#st").textContent="Saved. Open Learning to review it. Only approved examples reach the AI.";renderChat()}catch(e){err(e)}}
 var LG={bn:"Bangla",banglish:"Banglish",en:"English"};
 function learnCard(x){
@@ -379,7 +383,7 @@ async function ingest(m){
  var c=convs.filter(function(x){return x.name===m.name&&x.ch===m.ch})[0];
  if(!c){c={id:"c"+Date.now()+Math.random().toString(36).slice(2,5),name:m.name,ch:m.ch,stage:"New",score:15,intent:"",human:false,unread:0,msgs:[],draft:""};convs.unshift(c)}
  if(sb&&!c.cid)await dbNew(c);c.msgs.push({r:"c",t:m.text,ts:Date.now()});c.unread++;if(sb)await dbIn(c,m.text);
- if(sb&&c.dr){var od=await sb.from('umb_messages').update({status:'discarded'}).eq('id',c.dr);if(od.error)throw od.error;c.dr=null;c.fk=false;c.draft=''}
+ if(sb)await dropOpenDrafts(c);
  var d=await drafter(c);c.draft=d.text;c.intent=d.intent;c.score=d.score;c.human=d.human;
  if(c.stage==="New"&&d.score>=40)c.stage="Interested";if(sb)await dbSave(c);
  persist();emit("message",{id:c.id,text:m.text});emit("draft",{id:c.id,text:c.draft});render();return c}
