@@ -458,7 +458,6 @@ $("#cpx").addEventListener("click",function(){copy($("#ex").value,$("#cpx"))});
 (async function init(){
  await boot();if(!convs&&!sb){convs=[];await ingest({name:"Rahim A.",ch:"whatsapp",text:"Hi, how much is the Hoodie?"});await ingest({name:"Nadia",ch:"instagram",text:"Is the Cap available in black?"})}
  render()})();
-})();
   function stTag(s){return{sent:" (sent)",delivered:" (delivered)",read:" (read)",failed:" (failed to send)"}[s]||""}
 var _r0=render;
 render=function(){var u=[];try{convs.forEach(function(c){c.msgs.forEach(function(m){var g=stTag(m.st);if(g&&m.r==="a"){u.push([m,m.t]);m.t=m.t+g}})})}catch(e){}
