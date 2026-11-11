@@ -469,6 +469,23 @@ if(s.error&&s.error.context&&s.error.context.json){try{d=await s.error.context.j
 if(d&&d.ok&&d.simulated){}else if(d&&d.ok){m.st='sent';render();$('#st').style.borderColor='';$('#st').textContent='Sent on WhatsApp. Delivered and read marks appear after you reload the page.';return}
 else{m.st='failed';render();err(new Error((d&&d.error)||(s.error&&s.error.message)||'send failed'));return}}
 render()}catch(e){err(e)}};
+var SIG='';
+async function pollNew(){
+  if(!sb||!BIZ||document.hidden)return;
+  var a=document.activeElement;
+  if(a&&(a.tagName==='TEXTAREA'||a.tagName==='INPUT'||a.tagName==='SELECT'))return;
+  if(Object.keys(BUSY).length)return;
+  try{
+    var r=await sb.from('umb_messages').select('id,status,created_at').eq('business_id',BIZ).order('created_at',{ascending:false}).limit(3);
+    if(r.error)return;
+    var s=JSON.stringify(r.data);
+    var changed=SIG&&s!==SIG;
+    SIG=s;
+    if(changed)await loadAll();
+  }catch(e){}
+}
+setInterval(pollNew,8000);
+document.addEventListener('visibilitychange',function(){if(!document.hidden)pollNew()});
 })();
 </script>
 </body>
