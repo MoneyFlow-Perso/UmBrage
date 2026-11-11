@@ -459,6 +459,17 @@ $("#cpx").addEventListener("click",function(){copy($("#ex").value,$("#cpx"))});
  await boot();if(!convs&&!sb){convs=[];await ingest({name:"Rahim A.",ch:"whatsapp",text:"Hi, how much is the Hoodie?"});await ingest({name:"Nadia",ch:"instagram",text:"Is the Cap available in black?"})}
  render()})();
 })();
+  function stTag(s){return{sent:" (sent)",delivered:" (delivered)",read:" (read)",failed:" (failed to send)"}[s]||""}
+var _r0=render;
+render=function(){var u=[];try{convs.forEach(function(c){c.msgs.forEach(function(m){var g=stTag(m.st);if(g&&m.r==="a"){u.push([m,m.t]);m.t=m.t+g}})})}catch(e){}
+try{_r0()}finally{u.forEach(function(x){x[0].t=x[1]})}};
+approve=async function(c,t){try{await dbSave(c);var r=await sb.from('umb_messages').update({status:'approved'}).eq('id',c.dr).select('id,edited,kind').single();if(r.error)throw r.error;
+var m={id:r.data.id,ed:!!r.data.edited,k:r.data.kind,r:'a',t:t,ts:Date.now(),st:'approved'};c.msgs.push(m);delete FU[c.id];c.fk=false;c.draft='';c.dr=null;emit('approved',{id:c.id,text:t});
+if(c.ch==='whatsapp'){var s=await sb.functions.invoke('umb-send',{body:{message_id:m.id}});var d=s.data;
+if(s.error&&s.error.context&&s.error.context.json){try{d=await s.error.context.json()}catch(x){}}
+if(d&&d.ok&&d.simulated){}else if(d&&d.ok){m.st='sent';render();$('#st').style.borderColor='';$('#st').textContent='Sent on WhatsApp. Delivered and read marks appear after you reload the page.';return}
+else{m.st='failed';render();err(new Error((d&&d.error)||(s.error&&s.error.message)||'send failed'));return}}
+render()}catch(e){err(e)}};
 </script>
 </body>
 </html>
