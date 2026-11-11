@@ -469,6 +469,15 @@ if(s.error&&s.error.context&&s.error.context.json){try{d=await s.error.context.j
 if(d&&d.ok&&d.simulated){}else if(d&&d.ok){m.st='sent';render();$('#st').style.borderColor='';$('#st').textContent='Sent on WhatsApp. Delivered and read marks appear after you reload the page.';return}
 else{m.st='failed';render();err(new Error((d&&d.error)||(s.error&&s.error.message)||'send failed'));return}}
 render()}catch(e){err(e)}};
+  var START=Date.now()-60000,AUTO={};
+async function autoDraft(){
+  for(var i=0;i<convs.length;i++){
+    var c=convs[i],l=c.msgs[c.msgs.length-1];
+    if(!l||l.r!=='c'||c.dr||BUSY[c.id]||AUTO[l.id]||l.ts<START)continue;
+    AUTO[l.id]=1;
+    try{await regen(c)}catch(e){}
+  }
+}
 var SIG='';
 async function pollNew(){
   if(!sb||!BIZ||document.hidden)return;
@@ -481,7 +490,7 @@ async function pollNew(){
     var s=JSON.stringify(r.data);
     var changed=SIG&&s!==SIG;
     SIG=s;
-    if(changed)await loadAll();
+        if(changed){await loadAll();await autoDraft()}
   }catch(e){}
 }
 setInterval(pollNew,8000);
