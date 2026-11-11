@@ -469,6 +469,7 @@ if(s.error&&s.error.context&&s.error.context.json){try{d=await s.error.context.j
 if(d&&d.ok&&d.simulated){}else if(d&&d.ok){m.st='sent';render();$('#st').style.borderColor='';$('#st').textContent='Sent on WhatsApp. Delivered and read marks appear after you reload the page.';return}
 else{m.st='failed';render();err(new Error((d&&d.error)||(s.error&&s.error.message)||'send failed'));return}}
 render()}catch(e){err(e)}};
+})();
 </script>
 </body>
 </html>
