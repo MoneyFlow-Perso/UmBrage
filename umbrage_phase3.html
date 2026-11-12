@@ -247,9 +247,9 @@ async function dbSave(c){
  var e=[a,b].filter(function(x){return x.error})[0];if(e)throw e.error}
 async function approve(c,t){try{await dbSave(c);var r=await sb.from('umb_messages').update({status:'approved'}).eq('id',c.dr).select('id,edited,kind').single();if(r.error)throw r.error;c.msgs.push({id:r.data.id,ed:!!r.data.edited,k:r.data.kind,r:'a',t:t,ts:Date.now(),st:'approved'});delete FU[c.id];c.fk=false;c.draft='';c.dr=null;emit('approved',{id:c.id,text:t});render()}catch(e){err(e)}}
 
-function renderProd(){var p=$('#pl');
+var SHOWARCH=false;function renderProd(){var p=$('#pl');
  if(!sb){p.replaceChildren(h('div',{class:'notice'},'Connect your Supabase project in Settings & Data to manage products. In demo mode, edit the product lines in Settings.'));return}
- p.replaceChildren(h('p',{},h('button',{class:'pri',onclick:function(){PR.unshift({name:'',v:[],active:true,price:0});renderProd()}},'+ Add product')),...PR.map(prodCard))}
+ p.replaceChildren(h('p',{},h('button',{class:'pri',onclick:function(){PR.unshift({name:'',v:[],active:true,price:0});renderProd()}},'+ Add product'),h('button',{style:'margin-left:8px',onclick:function(){SHOWARCH=!SHOWARCH;renderProd()}},SHOWARCH?'Hide archived':'Show archived')),...PR.filter(function(x){return SHOWARCH||x.active!==false}).map(prodCard))}
 function prodCard(p){
  var box=h('div',{class:'card'}),key=function(s,c){return (s+'|'+c).toLowerCase()};
  p.q={};p.v.forEach(function(x){p.q[key(x.z,x.c)]=x.q});
@@ -267,8 +267,16 @@ function prodCard(p){
   h('label',{},'Description (the only source for details like material or fit)'),d,h('label',{},'Pitch (sales hook used with the price)'),pt2,
   h('div',{class:'two'},h('div',{},h('label',{},'Sizes (leave empty if none)'),sz),h('div',{},h('label',{},'Colours (leave empty if none)'),cl)),
   h('label',{},'Stock per size and colour (staff only, never sent in chats)'),grid,h('label',{},ch,' Active (the agent can talk about it)'),
-  h('p',{class:'ac'},h('button',{class:'pri',onclick:function(){saveProd(p,box)}},'Save product')));
+  h('p',{class:'ac'},h('button',{class:'pri',onclick:function(){saveProd(p,box)}},'Save product'),p.id&&p.active===false?h('button',{style:'margin-left:8px;color:#ff8a8a',onclick:function(){delProd(p)}},'Delete for good'):null));
  return box}
+async function delProd(p){if(!confirm('Delete '+p.name+' for good? This cannot be undone.'))return;try{
+ var v=await sb.from('umb_variants').select('id').eq('product_id',p.id);if(v.error)throw v.error;
+ var ids=v.data.map(function(x){return x.id});
+ if(ids.length){var s=await sb.from('umb_stock').delete().in('variant_id',ids);if(s.error)throw s.error}
+ var d=await sb.from('umb_products').delete().eq('id',p.id).select();if(d.error)throw d.error;
+ if(!d.data||!d.data.length)throw new Error('Not deleted (no permission?)');
+ await loadAll();renderProd();$('#st').textContent='Deleted '+p.name
+}catch(e){err(e)}}
 async function saveProd(p,box){try{
  var f=function(k){return box.querySelector('[name='+k+']')},key=function(s,c){return (s+'|'+c).toLowerCase()};
  var row={business_id:BIZ,code:f('code').value.trim()||null,name:f('name').value.trim(),price:Number(f('price').value)||0,description:f('d').value,pitch:f('pt').value,active:f('act').checked};
