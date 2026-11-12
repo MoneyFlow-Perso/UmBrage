@@ -322,6 +322,7 @@ async function followDraft(c){if(BUSY[c.id])return;BUSY[c.id]=1;try{
  c.dr=ins.data.id;c.draft=text;c.fk=true;c.aim=model;render()}catch(e){err(e)}finally{delete BUSY[c.id]}}
 async function regen(c){if(c.fk){await followDraft(c);return}
  if(BUSY[c.id])return;BUSY[c.id]=1;try{
+    var lm=c.msgs[c.msgs.length-1];if(sb&&lm&&lm.r!=="c"){$("#st").style.borderColor="";$("#st").textContent="Nothing new from the customer to answer. Wait for his next message.";return}
  $("#st").style.borderColor="";$("#st").textContent="Regenerating, please wait.";
  var d=await drafter(c);
  if(sb)await dropOpenDrafts(c);
