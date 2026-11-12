@@ -178,7 +178,7 @@ var DEF={products:"Classic Tee | ৳650 | 24 | S, M, L, XL\nHoodie | ৳1850 | 6
 var KB=Object.assign({},DEF,store.get("kb",{}));
 var convs=store.get("convs",null),cur=null,L={};
 var STAGES=["New","Interested","Negotiating","Won","Lost"],CH={whatsapp:"WhatsApp",instagram:"Instagram",messenger:"Messenger"};
-var INTENTS=[["complaint",/refund|late|broken|wrong|damaged|complain|bad service/i],["order",/\border\b|\bbuy\b|confirm|checkout/i],["discount",/discount|offer|cheaper|less price|bargain/i],["price",/price|cost|how much|\brate\b/i],["stock",/stock|available|availability|colou?r/i],["size",/\bsizes?\b|sizing/i],["ship",/deliver|shipping|courier|\bship\b/i],["hello",/^\s*(hi|hello|hey|salam|assalam)/i]];
+var INTENTS=[["complaint",/refund|late|broken|wrong|damaged|complain|bad service/i],["order",/\border\b|\bbuy\b|confirm|checkout/i],["discount",/discount|offer|cheaper|less price|bargain/i],["price",/price|cost|how much|\brate\b/i],["stock",/stock|available|availability|colou?r|\bache\b|\bachhe\b|\bnai\b|\bnei\b|আছে/i],["size",/\bsizes?\b|sizing/i],["ship",/deliver|shipping|courier|\bship\b/i],["hello",/^\s*(hi|hello|hey|salam|assalam)/i]];
 var W={order:45,discount:25,price:20,stock:20,size:20,ship:15,hello:5,general:5,complaint:0};
 var pt,persist=function(){if(!sb){store.set("convs",convs);return}clearTimeout(pt);pt=setTimeout(function(){var c=get(cur);if(c&&c.cid)dbSave(c).catch(err)},500)};
 var get=function(id){return convs.filter(function(c){return c.id===id})[0]};
@@ -198,7 +198,7 @@ function localDraft(c){
   discount:g+(pr?"I can’t change the listed price of "+pr.n+" myself, so I am passing your request to the team. They will reply shortly.":"I am checking with the team about offers and will reply shortly."),
   order:g+"Great, let’s confirm your order"+(pr?" for "+pr.n+" ("+pr.p+")":"")+". Please send your full name, phone, address and size.",
   complaint:g+"I’m sorry about this. I have flagged it to our team and someone will contact you personally soon.",
-  general:g+"Thanks for your message. Could you tell me a bit more about what you need? Our hours: "+KB.hours+"."};
+    general:g+"Thanks for your message. Let me check with the team and get back to you shortly. ধন্যবাদ, টিমের সাথে চেক করে শীঘ্রই জানাচ্ছি।"};
  var has=function(k){return its.indexOf(k)>-1};
  R.size=g+"Which item do you need sizes for? I will check for you.";
  var T=R[it];
