@@ -627,6 +627,54 @@ async function cancelOrder(o){
  var r=await sb.from('umb_orders').update({status:'cancelled',cancelled_at:new Date().toISOString()}).eq('id',o.id).eq('status','draft');
  if(r.error){err(r.error);return}
  renderOrders()}
+  /* ===== Receipts ===== */
+var _oc=orderCard;
+orderCard=function(o,its){var el=_oc(o,its);
+ if(o.status!=='cancelled'&&o.status!=='draft')el.append(h('p',{class:'ac'},h('button',{class:'gh',onclick:function(){receiptDlg(o,its)}},'Receipt')));
+ return el};
+function esc(x){return String(x==null?'':x).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function rHtml(no,s){
+ var row=function(a,b,bold){return '<tr><td>'+a+'</td><td style="text-align:right">'+(bold?'<b>'+b+'</b>':b)+'</td></tr>'};
+ return '<div style="font-family:Arial,sans-serif;max-width:340px;margin:auto;color:#111;background:#fff;padding:14px;border-radius:10px">'
+ +'<h2 style="margin:0;text-align:center">'+esc(s.biz||'Receipt')+'</h2>'
+ +(s.bizPhone?'<div style="text-align:center;font-size:12px">'+esc(s.bizPhone)+'</div>':'')
+ +'<hr><div style="font-size:12px">Receipt: <b>'+esc(no)+'</b><br>Order: '+esc(s.orderNo)+'<br>Date: '+esc(s.date)+'<br>Customer: '+esc(s.customer)+(s.phone?' · '+esc(s.phone):'')+'<br>'+esc(s.address)+', '+esc(s.district)+'</div><hr>'
+ +'<table style="width:100%;font-size:12px;border-collapse:collapse">'+s.items.map(function(i){return row(i.qty+' × '+esc(i.name)+(i.size?' '+esc(i.size):'')+(i.color?' / '+esc(i.color):''),'৳'+i.total)}).join('')+'</table><hr>'
+ +'<table style="width:100%;font-size:12px;border-collapse:collapse">'+row('Subtotal','৳'+s.subtotal)+(Number(s.discount)?row('Discount','-৳'+s.discount):'')+row('Delivery','৳'+s.delivery)+row('Total','৳'+s.total,1)+'</table>'
+ +'<div style="font-size:12px;margin-top:6px">Payment: '+esc(s.payMethod)+' - '+esc(s.payStatus)+'</div>'
+ +(s.footer?'<p style="text-align:center;font-size:12px">'+esc(s.footer)+'</p>':'')+'</div>'}
+function rText(no,s){
+ return [s.biz||'Receipt',s.bizPhone,'Receipt '+no+' | Order '+s.orderNo,s.date,s.customer]
+ .concat(s.items.map(function(i){return i.qty+' x '+i.name+(i.size?' '+i.size:'')+(i.color?'/'+i.color:'')+' - Tk '+i.total}))
+ .concat(['Delivery: Tk '+s.delivery],Number(s.discount)?['Discount: Tk '+s.discount]:[],['Total: Tk '+s.total,'Payment: '+s.payMethod+' ('+s.payStatus+')',s.footer]).filter(Boolean).join('\n')}
+async function receiptDlg(o,its){
+ var old=document.getElementById('rdlg');if(old)old.remove();
+ var ex=await sb.from('umb_receipts').select('*').eq('order_id',o.id).maybeSingle();
+ if(ex.error){err(ex.error);return}
+ var dlg=h('dialog',{id:'rdlg',style:'max-height:92vh;overflow:auto'}),sv=store.get('rcpt',{});
+ var close=h('button',{class:'gh',onclick:function(){dlg.close();dlg.remove()}},'Close');
+ function show(no,s){
+  var box=h('div',{});box.innerHTML=rHtml(no,s);
+  dlg.replaceChildren(h('b',{},'Receipt '+no),box,h('p',{class:'ac'},close,
+   h('button',{class:'gh',onclick:function(){navigator.clipboard.writeText(rText(no,s)).then(function(){$('#st').textContent='Receipt text copied'},function(){err('Copy not allowed here')})}},'Copy text'),
+   h('button',{class:'pri',onclick:function(){var w=window.open('','_blank');if(!w){err('Allow pop-ups to print');return}w.document.write('<title>'+esc(no)+'</title>'+rHtml(no,s));w.document.close();w.focus();w.print()}},'Print / PDF')))}
+ if(ex.data){dlg.append('');document.body.append(dlg);show(ex.data.receipt_no,ex.data.snapshot);dlg.showModal();return}
+ var bn=h('input',{}),bp=h('input',{}),ft=h('textarea',{rows:'2'}),ps=h('select',{},[['paid','Paid'],['unpaid','Unpaid (pay on delivery)']].map(function(x){return h('option',{value:x[0]},x[1])}));
+ bn.value=sv.biz||'';bp.value=sv.ph||'';ft.value=sv.ft||'Thank you for your order!';ps.value=o.payment_status==='paid'?'paid':'unpaid';
+ var ok=h('button',{class:'pri'},'Approve and save receipt');
+ ok.addEventListener('click',async function(){
+  var s={biz:bn.value.trim(),bizPhone:bp.value.trim(),footer:ft.value.trim(),orderNo:o.order_no,date:new Date().toLocaleDateString(),customer:o.customer_name,phone:o.phone,address:o.address,district:o.district,payMethod:String(o.payment_method).toUpperCase(),payStatus:ps.value==='paid'?'Paid':'Unpaid',
+   items:its.map(function(i){return{name:i.product_name,size:i.size,color:i.color,qty:i.qty,total:i.line_total!=null?Number(i.line_total):i.qty*i.unit_price}}),subtotal:Number(o.subtotal),discount:Number(o.discount),delivery:Number(o.delivery_charge),total:Number(o.total)};
+  ok.disabled=true;
+  var r=await sb.from('umb_receipts').insert({business_id:BIZ,order_id:o.id,snapshot:s,issued_by:UID}).select().single();
+  if(r.error){err(r.error);ok.disabled=false;return}
+  store.set('rcpt',{biz:s.biz,ph:s.bizPhone,ft:s.footer});
+  var u=await sb.from('umb_orders').update({payment_status:ps.value}).eq('id',o.id);if(u.error)err(u.error);
+  show(r.data.receipt_no,s)});
+ dlg.append(h('b',{},'Receipt for '+o.order_no+' · '+o.customer_name),h('p',{},h('small',{},'Items, address and totals are filled from the order. Check, then approve.')),
+  h('label',{},'Business name'),bn,h('label',{},'Business phone'),bp,h('label',{},'Payment'),ps,h('label',{},'Footer note'),ft,
+  h('p',{class:'ac'},close,ok));
+ document.body.append(dlg);dlg.showModal()}
 })();
 </script>
 </body>
