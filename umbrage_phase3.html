@@ -582,6 +582,51 @@ async function orderDlg(c){
   h('label',{},'Discount'),dc,h('p',{},tot),
   h('p',{class:'ac'},h('button',{class:'gh',onclick:function(){dlg.close();dlg.remove()}},'Cancel'),sv));
  document.body.append(dlg);addRow();dlg.showModal()}
+  /* ===== Orders tab ===== */
+(function(){
+ $('#t-prod').after(h('section',{id:'t-ord',hidden:''},h('div',{id:'ol'})));
+ document.querySelectorAll('[data-t="prod"]').forEach(function(b){
+  var n=document.createElement('button');n.dataset.t='ord';
+  n.innerHTML=b.closest('.mobilebar')?'<span>▤</span>Orders':'<span class="ico">▤</span> Orders';
+  n.addEventListener('click',function(){tab('ord')});b.after(n)});
+})();
+var _tab=tab;
+tab=function(t){var s=$('#t-ord');
+ if(t==='ord'){['inbox','camp','set','prod','test','learn'].forEach(function(x){$('#t-'+x).hidden=true});s.hidden=false;
+  document.querySelectorAll('[data-t]').forEach(function(b){b.classList.toggle('active',b.dataset.t==='ord')});
+  $('#pt').textContent='Orders';renderOrders();return}
+ s.hidden=true;_tab(t)};
+async function renderOrders(){
+ var p=$('#ol');
+ if(!sb){p.replaceChildren(h('div',{class:'notice'},'Connect Supabase in Settings & Data to see orders.'));return}
+ var r=await sb.from('umb_orders').select('*').eq('business_id',BIZ).order('created_at',{ascending:false}).limit(50);
+ if(r.error){err(r.error);return}
+ var ids=r.data.map(function(o){return o.id}),by={};
+ if(ids.length){var it=await sb.from('umb_order_items').select('*').in('order_id',ids);
+  if(it.error){err(it.error);return}it.data.forEach(function(i){(by[i.order_id]=by[i.order_id]||[]).push(i)})}
+ if(!r.data.length){p.replaceChildren(h('div',{class:'notice'},'No orders yet. Open a chat and tap Create order.'));return}
+ p.replaceChildren.apply(p,r.data.map(function(o){return orderCard(o,by[o.id]||[])}))}
+function orderCard(o,its){
+ var st=o.status;
+ return h('div',{class:'card'},
+  h('p',{},h('b',{},o.order_no+' · '+o.customer_name),' ',tg(st,st==='confirmed'?'ok':st==='cancelled'?'wn':''),h('br'),h('small',{},new Date(o.created_at).toLocaleString())),
+  its.map(function(i){return h('div',{},i.qty+' × '+i.product_name+(i.size?' '+i.size:'')+(i.color?' / '+i.color:'')+'  ৳'+(i.line_total!=null?i.line_total:i.qty*i.unit_price))}),
+  h('p',{},h('small',{},(o.phone||'')+' | '+(o.address||'')+', '+(o.district||'')+' | '+o.payment_method.toUpperCase()+h('br').outerHTML.replace(/.*/,'')),h('br'),
+   h('small',{},'Delivery ৳'+o.delivery_charge+(Number(o.discount)?' | Discount ৳'+o.discount:'')),h('br'),h('b',{},'Total ৳'+o.total)),
+  st==='draft'?h('p',{class:'ac'},
+   h('button',{class:'gh',onclick:function(){cancelOrder(o)}},'Cancel order'),
+   h('button',{class:'pri',onclick:function(){confirmOrder(o)}},'Confirm order')):null)}
+async function confirmOrder(o){
+ if(!confirm('Confirm '+o.order_no+'? Stock will be deducted.'))return;
+ var r=await sb.rpc('umb_confirm_order',{p_order:o.id});
+ if(r.error){err(r.error);return}
+ $('#st').textContent=o.order_no+' confirmed, stock updated'+(r.data>0?' (stock was short on '+r.data+' item(s))':'');
+ await loadAll();renderOrders()}
+async function cancelOrder(o){
+ if(!confirm('Cancel '+o.order_no+'?'))return;
+ var r=await sb.from('umb_orders').update({status:'cancelled',cancelled_at:new Date().toISOString()}).eq('id',o.id).eq('status','draft');
+ if(r.error){err(r.error);return}
+ renderOrders()}
 })();
 </script>
 </body>
