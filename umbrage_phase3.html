@@ -256,7 +256,7 @@ async function loadAll(){
  var D=R.map(function(x){return x.data}),s=D[0][0];
  if(s)KB=Object.assign(KB,{ship:s.delivery,hours:s.hours,tone:s.tone,stk:s.show_stock,szk:s.show_sizes?'on':'off',lim:s.ai_daily_limit,fh:s.followup_hours});
  var qty={},cu={};D[3].forEach(function(k){qty[k.variant_id]=k.qty});D[4].forEach(function(c){cu[c.id]=c});
- PR=D[1].map(function(p){var v=D[2].filter(function(x){return x.product_id===p.id&&x.active}).map(function(x){return{id:x.id,z:x.size||'',c:x.color||'',q:qty[x.id]||0}});return{id:p.id,name:p.name,code:p.code||'',price:Number(p.price),description:p.description,pitch:p.pitch,active:p.active,v:v}});
+ PR=D[1].map(function(p){var v=D[2].filter(function(x){return x.product_id===p.id&&x.active}).map(function(x){return{id:x.id,z:x.size||'',c:x.color||'',q:qty[x.id]||0}});return{id:p.id,name:p.name,code:p.code||'',price:Number(p.price),description:p.description,pitch:p.pitch,active:p.active,category:p.category||'',cost_price:Number(p.cost_price)||0,v:v}});
  convs=D[5].map(function(c){var u=cu[c.customer_id]||{},ms=D[6].filter(function(m){return m.conversation_id===c.id}),dr=ms.filter(function(m){return m.status==='draft'})[0];
   return{id:c.id,cid:c.customer_id,name:u.name||'Customer',ch:c.channel,stage:u.stage||'New',score:u.lead_score||0,intent:c.intent||'',human:c.needs_human,unread:c.unread_count,dr:dr?dr.id:null,draft:dr?dr.body:'',fk:!!(dr&&dr.kind==='followup'),aim:dr?(dr.ai_model||undefined):undefined,msgs:ms.filter(function(m){return m.status!=='draft'&&m.status!=='discarded'}).map(function(m){return{id:m.id,ed:!!m.edited,k:m.kind,r:m.direction==='in'?'c':'a',t:m.body,ts:Date.parse(m.platform_ts||m.created_at),st:m.status}})}});
  var us=await sb.from('umb_ai_usage').select('calls').eq('business_id',BIZ).eq('day',today()).maybeSingle();AI.used=us.data?us.data.calls:0;
@@ -296,7 +296,7 @@ function prodCard(p){
   S.forEach(function(s){tb.append(h('tr',{},h('th',{},s||'One size'),C.map(function(c){var k=key(s,c),i=h('input',{type:'number',min:'0','aria-label':(s||'One size')+' '+c});i.value=p.q[k]||0;i.addEventListener('input',function(){p.q[k]=parseInt(i.value,10)||0});return h('td',{},i)})))});
   grid.replaceChildren(tb)};
  sz.addEventListener('change',draw);cl.addEventListener('change',draw);draw();
- box.append(h('div',{class:'two'},I('code','Product code',p.code),I('price','Price (BDT)',p.price||'','number')),I('name','Name',p.name),
+ box.append(h('div',{class:'two'},I('code','Product code',p.code),I('price','Price (BDT)',p.price||'','number')),I('name','Name',p.name),h('div',{class:'two'},I('cat','Category',p.category),I('cost','Cost price (BDT, staff only)',p.cost_price||'','number')),
   h('label',{},'Description (the only source for details like material or fit)'),d,h('label',{},'Pitch (sales hook used with the price)'),pt2,
   h('div',{class:'two'},h('div',{},h('label',{},'Sizes (leave empty if none)'),sz),h('div',{},h('label',{},'Colours (leave empty if none)'),cl)),
   h('label',{},'Stock per size and colour (staff only, never sent in chats)'),grid,h('label',{},ch,' Active (the agent can talk about it)'),
@@ -312,7 +312,7 @@ async function delProd(p){if(!confirm('Delete '+p.name+' for good? This cannot b
 }catch(e){err(e)}}
 async function saveProd(p,box){try{
  var f=function(k){return box.querySelector('[name='+k+']')},key=function(s,c){return (s+'|'+c).toLowerCase()};
- var row={business_id:BIZ,code:f('code').value.trim()||null,name:f('name').value.trim(),price:Number(f('price').value)||0,description:f('d').value,pitch:f('pt').value,active:f('act').checked};
+ var row={business_id:BIZ,code:f('code').value.trim()||null,name:f('name').value.trim(),price:Number(f('price').value)||0,description:f('d').value,pitch:f('pt').value,active:f('act').checked,category:f('cat').value.trim()||null,cost_price:Number(f('cost').value)||0};
  if(!row.name){err('Give the product a name first');return}
  var r=p.id?await sb.from('umb_products').update(row).eq('id',p.id).select().single():await sb.from('umb_products').insert(row).select().single();
  if(r.error)throw r.error;p.id=r.data.id;
