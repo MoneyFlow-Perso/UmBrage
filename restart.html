@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Restart Command Center</title>
+<link rel="stylesheet" href="restart-theme.css?v=1">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+.sb{display:grid;gap:2px;margin:2px 0 6px 20px;padding-left:10px;border-left:1px solid var(--line)}
+.sb button{border:0;background:none;color:var(--muted);text-align:left;padding:8px 10px;border-radius:9px;font-size:12px;cursor:pointer;transition:.2s}
+.sb button:hover{color:#d8ffea;background:#19f39b12}
+.sb button.active{color:var(--green);background:#19f39b1a}
+.tag{font-size:8px;font-weight:800;color:#032016;background:var(--green);border-radius:6px;padding:2px 5px;margin-left:auto}
+.tiles{grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin-top:18px}
+.p{padding:18px}
+.p h3{margin:12px 0 0}
+.p p{font-size:12px;color:var(--muted);margin:8px 0 14px;line-height:1.5}
+.f{display:grid;gap:6px;max-width:460px}
+.f label{font-size:11px;color:var(--muted);margin-top:8px}
+.f input{padding:12px;font-size:14px}
+#fr{display:block;width:100%;height:calc(100vh - 74px);height:calc(100dvh - 74px);border:0}
+#main.mod{padding:0}
+#main.mod .rs-top{padding:0 16px}
+#shade{position:fixed;inset:0;background:#0008;z-index:4}
+@media(max-width:760px){#fr{height:calc(100dvh - 63px)}}
+</style></head>
+<body>
+<div class="rs-app">
+<aside class="rs-side" id="side">
+ <div class="rs-logo"><div class="rs-mark">↗</div><div><b>Restart</b><small>BUSINESS COMMAND CENTER</small></div></div>
+ <div class="rs-label">WORKSPACE</div>
+ <nav class="rs-nav" id="nav"></nav>
+</aside>
+<div id="shade" hidden></div>
+<main class="rs-main" id="main">
+ <header class="rs-top">
+  <div style="display:flex;align-items:center;gap:10px"><button class="rs-menu" id="menu">☰</button><b id="ttl">Dashboard</b></div>
+  <button class="rs-chip" id="stt" data-r="conn" style="background:none;cursor:pointer"><i class="rs-live"></i><span id="stx">Checking...</span></button>
+ </header>
+ <section id="home" class="rs-page">
+  <div class="rs-eyebrow" style="margin-top:22px">COMMAND CENTER / OVERVIEW</div>
+  <h1 class="rs-h1">Good day. Here's your overview.</h1>
+  <div class="rs-sub">One workspace for sales, CRM and AI replies.</div>
+  <div class="rs-grid rs-stagger tiles">
+   <div class="rs-card p"><div class="rs-orb">▣</div><h3>Brand Sales Agent</h3><p>AI reply drafts, products, learning and tests for WhatsApp chats.</p><button class="rs-btn primary" data-r="umb:inbox">Open replies</button></div>
+   <div class="rs-card p"><div class="rs-orb">♧</div><h3>CRM &amp; Prospects</h3><p>Leads, customers, orders and follow-ups in one place.</p><button class="rs-btn primary" data-r="crm:overview">Open CRM</button></div>
+   <div class="rs-card p"><div class="rs-orb">⚙</div><h3>Connection</h3><p id="hc">Checking your sign-in...</p><button class="rs-btn" data-r="conn">Open settings</button></div>
+  </div>
+ </section>
+ <section id="conn" class="rs-page" hidden>
+  <div class="rs-eyebrow" style="margin-top:22px">SETTINGS</div>
+  <h1 class="rs-h1">Connection</h1>
+  <div class="rs-sub">One sign-in for the Brand Sales Agent and the CRM.</div>
+  <div class="rs-card p f" style="margin-top:18px">
+   <div id="who" class="rs-chip" style="justify-self:start">Not signed in</div>
+   <label>Supabase URL</label><input id="cu" autocomplete="off">
+   <label>Supabase anon key</label><input id="ck" type="password" autocomplete="off">
+   <label>Email</label><input id="ce" type="email" autocomplete="username">
+   <label>Password</label><input id="cw" type="password" autocomplete="current-password">
+   <div style="display:flex;gap:8px;margin-top:12px"><button class="rs-btn primary" id="si">Sign in</button><button class="rs-btn" id="so">Sign out</button></div>
+  </div>
+ </section>
+ <section id="soon" class="rs-page" hidden>
+  <div class="rs-eyebrow" style="margin-top:22px">COMING SOON</div>
+  <h1 class="rs-h1" id="sn"></h1>
+  <div class="rs-sub">This module is planned. It will open here in the same design.</div>
+ </section>
+ <iframe id="fr" hidden title="Module"></iframe>
+</main>
+</div>
+<div class="rs-toast" id="toast"></div>
+<script>
+var $=function(s){return document.querySelector(s)};
+var VER=20,R='home',SRC={umb:'umbrage_phase3.html',crm:'Brand_Sales_Agent_V2_1.html'},sb=null,fr=$('#fr');
+var EMBED='.sidebar,.mobilebar{display:none!important}.app{display:block!important;min-height:0!important}body{padding-bottom:0!important}';
+var MENU=[
+['home','Dashboard','⌂'],
+['crm:analytics','Sales Analytics','▥'],
+['crm:overview','CRM & Prospects','♧',[['crm:overview','Overview'],['crm:leads','Leads & Customers'],['crm:orders','Orders'],['crm:followups','Follow-ups'],['crm:products','Products']]],
+['crm:marketing','Marketing Hub','◈'],
+['umb:inbox','Brand Sales Agent','▣',[['umb:inbox','AI Reply Drafts'],['umb:camp','Campaign Copy'],['umb:prod','Products'],['umb:learn','Learning'],['umb:test','Test set'],['umb:set','Settings & Data']],'NEW'],
+['soon:Social Hub','Social Hub','⌯'],
+['soon:AI Intelligence','AI Intelligence','✳'],
+['crm:automation','Automation Center','⚙'],
+['soon:Reports & Insights','Reports & Insights','◴'],
+['conn','Settings','⚙']];
+function toast(t){var e=$('#toast');e.textContent=t;e.classList.add('show');setTimeout(function(){e.classList.remove('show')},2600)}
+function label(r){var L='';MENU.forEach(function(m){if(m[0]===r)L=m[1];(m[3]||[]).forEach(function(s){if(s[0]===r)L=m[1]+' / '+s[1]})});return L}
+function nav(){var h='';MENU.forEach(function(m){var s=m[3],on=m[0]===R||(s&&s.some(function(x){return x[0]===R}));
+h+='<button data-r="'+m[0]+'" class="'+(on?'active':'')+'"><span class="rs-ico">'+m[2]+'</span>'+m[1]+(m[4]?'<span class="tag">'+m[4]+'</span>':'')+'</button>';
+if(s&&on)h+='<div class="sb">'+s.map(function(x){return '<button data-r="'+x[0]+'" class="'+(x[0]===R?'active':'')+'">'+x[1]+'</button>'}).join('')+'</div>'});
+$('#nav').innerHTML=h}
+function apply(){try{var w=fr.contentWindow,t=fr.dataset.t;fr.dataset.m==='umb'?w.tab(t):w.navigate(t)}catch(e){}}
+function openMod(m,t){fr.dataset.t=t;if(fr.dataset.m!==m){fr.dataset.m=m;fr.src=SRC[m]+'?v='+VER}else apply()}
+fr.addEventListener('load',function(){try{var d=fr.contentDocument,s=d.createElement('style');s.textContent=EMBED;d.head.appendChild(s);
+if(!d.querySelector('link[href*="restart-theme"]')){var l=d.createElement('link');l.rel='stylesheet';l.href='restart-theme.css?v=1';d.head.insertBefore(l,s)}}catch(e){}apply()});
+function go(r){R=r;var p=r.split(':'),m=p[0],t=p.slice(1).join(':'),mod=m==='umb'||m==='crm';
+$('#home').hidden=m!=='home';$('#conn').hidden=m!=='conn';$('#soon').hidden=m!=='soon';fr.hidden=!mod;$('#main').classList.toggle('mod',mod);
+if(m==='soon')$('#sn').textContent=t;
+$('#ttl').textContent=label(r)||'Settings';
+if(mod)openMod(m,t);
+nav();$('#side').classList.remove('open');$('#shade').hidden=true}
+function cfg(){var a={},b={};try{a=JSON.parse(localStorage.getItem('umb:cfg')||'{}')}catch(e){}try{b=JSON.parse(localStorage.getItem('brandSalesAgentV21Supabase')||'{}')}catch(e){}return a.url&&a.key?a:b}
+function setSt(t,ok){$('#stx').textContent=t;$('#who').textContent=ok?'Signed in as '+t:'Not signed in';$('#hc').textContent=ok?'Signed in as '+t+'. Both apps share this sign-in.':'Not signed in yet. Open settings to sign in once for both apps.'}
+async function check(){var c=cfg();$('#cu').value=c.url||'';$('#ck').value=c.key||'';
+if(!c.url||!c.key||!window.supabase){setSt('Sign in',false);return}
+try{sb=window.supabase.createClient(c.url,c.key,{auth:{autoRefreshToken:false}});var r=await sb.auth.getSession(),u=r.data.session&&r.data.session.user;setSt(u?u.email:'Sign in',!!u)}catch(e){setSt('Sign in',false)}}
+$('#si').addEventListener('click',async function(){var url=$('#cu').value.trim(),key=$('#ck').value.trim();
+if(!url||!key||!window.supabase){toast('Enter the URL and key');return}
+var c=window.supabase.createClient(url,key,{auth:{autoRefreshToken:false}});
+var r=await c.auth.signInWithPassword({email:$('#ce').value.trim(),password:$('#cw').value});
+if(r.error){toast(r.error.message);return}
+var j=JSON.stringify({url:url,key:key});localStorage.setItem('umb:cfg',j);localStorage.setItem('brandSalesAgentV21Supabase',j);
+$('#cw').value='';fr.removeAttribute('data-m');await check();toast('Signed in')});
+$('#so').addEventListener('click',async function(){if(sb)await sb.auth.signOut();fr.removeAttribute('data-m');await check();toast('Signed out')});
+document.addEventListener('click',function(e){var b=e.target.closest('[data-r]');if(b)go(b.dataset.r)});
+$('#menu').addEventListener('click',function(){$('#side').classList.add('open');$('#shade').hidden=false});
+$('#shade').addEventListener('click',function(){$('#side').classList.remove('open');$('#shade').hidden=true});
+go('home');check();
+</script>
+</body></html>
