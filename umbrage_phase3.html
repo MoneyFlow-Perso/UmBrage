@@ -675,6 +675,60 @@ async function receiptDlg(o,its){
   h('label',{},'Business name'),bn,h('label',{},'Business phone'),bp,h('label',{},'Payment'),ps,h('label',{},'Footer note'),ft,
   h('p',{class:'ac'},close,ok));
  document.body.append(dlg);dlg.showModal()}
+  /* ===== Company profile v2 (PSD) ===== */
+var CO={name:'',phone:'',motto:'',logo:'',loaded:false},coLg='';
+function applyBrand(){
+ var b=document.querySelector('.brand');if(!b)return;
+ var nm=CO.name||'UmBrage',lg=b.querySelector('.logo');
+ if(CO.logo){lg.style.background='none';lg.style.boxShadow='none';lg.style.overflow='hidden';lg.replaceChildren(h('img',{src:CO.logo,alt:'',style:'width:100%;height:100%;object-fit:contain'}))}
+ else{lg.replaceChildren();lg.style.background='';lg.style.boxShadow='';lg.textContent=(nm[0]||'U').toUpperCase()}
+ b.querySelector('strong').textContent=nm;
+ b.querySelector('small').textContent=CO.motto||'BRAND SALES AGENT · AI'}
+var coName=h('input',{placeholder:'Your company name'}),coPh=h('input',{placeholder:'+8801XXXXXXXXX'}),coMo=h('input',{placeholder:'Optional, a short motto'}),
+ coMode=h('select',{},[['letter','Letter (first letter of the name)'],['upload','Upload an image or PSD'],['link','Image link']].map(function(x){return h('option',{value:x[0]},x[1])})),
+ coFile=h('input',{type:'file',accept:'image/*,.psd'}),coLink=h('input',{placeholder:'https://.../logo.png'}),coPrev=h('div',{style:'margin:8px 0'}),
+ fW=h('div',{},h('label',{},'Logo file (PNG, JPG, SVG, PSD)'),coFile),lW=h('div',{},h('label',{},'Logo link'),coLink),coSave=h('button',{class:'pri'},'Save company profile');
+function prevLogo(){coPrev.replaceChildren(coLg?h('img',{src:coLg,style:'max-height:56px;max-width:160px;border-radius:8px;background:#fff;padding:4px'}):h('small',{},'No logo: the first letter of the name is used'))}
+function syncMode(){fW.hidden=coMode.value!=='upload';lW.hidden=coMode.value!=='link'}
+coMode.addEventListener('change',function(){if(coMode.value==='letter')coLg='';if(coMode.value==='link')coLg=coLink.value.trim();if(coMode.value==='upload'&&coLg.indexOf('data:')!==0)coLg='';syncMode();prevLogo()});
+coLink.addEventListener('input',function(){coLg=coLink.value.trim();prevLogo()});
+function loadPsdLib(){return window.agPsd?Promise.resolve():new Promise(function(res,rej){var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/ag-psd@31.0.0/dist/bundle.js';s.onload=res;s.onerror=function(){rej(new Error('Could not load the PSD reader. Check the internet connection.'))};document.head.append(s)})}
+function putLogo(src){var k=Math.min(1,512/Math.max(src.width||512,src.height||512)),o=document.createElement('canvas');
+ o.width=Math.max(1,Math.round(src.width*k));o.height=Math.max(1,Math.round(src.height*k));
+ var x=o.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(src,0,0,o.width,o.height);coLg=o.toDataURL('image/webp',0.92);prevLogo()}
+coFile.addEventListener('change',async function(){
+ var f=coFile.files[0];if(!f)return;
+ try{
+  if(/\.psd$/i.test(f.name)){
+   if(f.size>60e6)throw new Error('This PSD is very large for a phone. Export a PNG from Photoshop instead.');
+   $('#st').textContent='Reading PSD...';await loadPsdLib();
+   var psd=agPsd.readPsd(await f.arrayBuffer(),{skipLayerImageData:true,skipThumbnail:true});
+   if(!psd.canvas)throw new Error('This PSD has no flattened preview. In Photoshop, turn on Maximize Compatibility when saving, or export a PNG.');
+   putLogo(psd.canvas);$('#st').textContent='PSD loaded'}
+  else{var u=URL.createObjectURL(f),im=new Image();
+   await new Promise(function(res,rej){im.onload=res;im.onerror=function(){rej(new Error('That image could not be read'))};im.src=u});
+   putLogo(im);URL.revokeObjectURL(u)}
+ }catch(e){err(e)}});
+function fillCo(){coName.value=CO.name;coPh.value=CO.phone;coMo.value=CO.motto;coLg=CO.logo;
+ coMode.value=!CO.logo?'letter':(CO.logo.indexOf('data:')===0?'upload':'link');coLink.value=coMode.value==='link'?CO.logo:'';syncMode();prevLogo()}
+coSave.addEventListener('click',async function(){
+ if(!sb){err('Connect Supabase first');return}
+ if(!coName.value.trim()){err('Give the company a name');return}
+ if(coMode.value==='link')coLg=coLink.value.trim();if(coMode.value==='letter')coLg='';
+ coSave.disabled=true;
+ var r=await sb.from('umb_settings').upsert({business_id:BIZ,company_name:coName.value.trim(),company_phone:coPh.value.trim()||null,company_motto:coMo.value.trim()||null,company_logo:coLg||null});
+ coSave.disabled=false;if(r.error){err(r.error);return}
+ CO={name:coName.value.trim(),phone:coPh.value.trim(),motto:coMo.value.trim(),logo:coLg,loaded:true};applyBrand();$('#st').textContent='Company profile saved'});
+document.querySelector('#t-set .card').after(h('div',{class:'card'},h('b',{},'Company profile'),h('br'),h('small',{},'Shown at the top of the menu and on every receipt.'),
+ h('label',{},'Company name'),coName,h('label',{},'Phone number'),coPh,h('label',{},'Motto (optional)'),coMo,h('label',{},'Logo'),coMode,fW,lW,coPrev,h('p',{class:'ac'},coSave)));
+fillCo();
+async function loadCo(){
+ if(!sb||!BIZ)return;
+ var r=await sb.from('umb_settings').select('company_name,company_phone,company_motto,company_logo').eq('business_id',BIZ).maybeSingle();
+ if(r.error){err(r.error);return}var d=r.data||{};
+ CO={name:d.company_name||'',phone:d.company_phone||'',motto:d.company_motto||'',logo:d.company_logo||'',loaded:true};applyBrand();fillCo()}
+var _la=loadAll;
+loadAll=async function(){var x=await _la.apply(this,arguments);if(!CO.loaded)await loadCo();return x};
 })();
 </script>
 </body>
