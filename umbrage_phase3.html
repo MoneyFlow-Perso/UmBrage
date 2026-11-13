@@ -537,6 +537,51 @@ async function pollNew(){
 }
 setInterval(pollNew,8000);
 document.addEventListener('visibilitychange',function(){if(!document.hidden)pollNew()});
+  /* ===== Chat to order ===== */
+var _rc=renderChat;
+renderChat=function(){_rc();var c=get(cur);if(!sb||!c||!c.cid)return;var ac=document.querySelector('#cv .cp .ac');if(!ac||ac.querySelector('.ordb'))return;ac.append(h('button',{class:'gh ordb',onclick:function(){orderDlg(c)}},'Create order'))};
+async function orderDlg(c){
+ var old=document.getElementById('odlg');if(old)old.remove();
+ var P=PR.filter(function(p){return p.id&&p.active!==false});
+ if(!P.length){err('Add an active product first');return}
+ var cu=await sb.from('umb_customers').select('address,district').eq('id',c.cid).maybeSingle();
+ var idn=await sb.from('umb_identities').select('channel,external_id').eq('customer_id',c.cid);
+ var wa=(idn.data||[]).filter(function(x){return x.channel==='whatsapp'&&String(x.external_id).indexOf('sim-')!==0})[0];
+ var dlg=h('dialog',{id:'odlg',style:'max-height:92vh;overflow:auto'}),box=h('div',{}),items=[],tot=h('b',{});
+ var ph=h('input',{type:'tel'}),ad=h('textarea',{rows:'2'}),di=h('input',{}),dc=h('input',{type:'number',min:'0'}),dv=h('input',{type:'number',min:'0'});
+ var pm=h('select',{},[['cod','Cash on delivery'],['bkash','bKash'],['nagad','Nagad']].map(function(o){return h('option',{value:o[0]},o[1])}));
+ ph.value=wa?wa.external_id:'';ad.value=(cu.data&&cu.data.address)||'';di.value=(cu.data&&cu.data.district)||'';dc.value=0;
+ dv.value=/dhaka/i.test(di.value)||!di.value?60:120;
+ function calc(){var s=0;items.forEach(function(r){s+=P[r.ps.value].price*(parseInt(r.qt.value,10)||0)});var d=Number(dc.value)||0,dl=Number(dv.value)||0;tot.textContent='Subtotal ৳'+s+'  |  Total ৳'+Math.max(0,s-d+dl);return{s:s,d:d,dl:dl,t:Math.max(0,s-d+dl)}}
+ function fillV(r){var p=P[r.ps.value];r.zs.replaceChildren.apply(r.zs,(p.v.length?p.v:[{id:'',z:'',c:'',q:0}]).map(function(v,i){return h('option',{value:i},((v.z||'One size')+(v.c?' / '+v.c:''))+(v.id?' (stock '+v.q+')':''))}));calc()}
+ function addRow(){var r={ps:h('select',{},P.map(function(p,i){return h('option',{value:i},p.name+' ৳'+p.price)})),zs:h('select',{}),qt:h('input',{type:'number',min:'1'})};r.qt.value=1;
+  r.el=h('div',{style:'border:1px solid #344438;border-radius:12px;padding:8px;margin:8px 0'},r.ps,r.zs,h('div',{class:'two'},r.qt,h('button',{class:'gh',onclick:function(){items.splice(items.indexOf(r),1);r.el.remove();calc()}},'Remove')));
+  r.ps.addEventListener('change',function(){fillV(r)});r.qt.addEventListener('input',calc);items.push(r);box.append(r.el);fillV(r)}
+ di.addEventListener('input',function(){if(!dv.dataset.m){dv.value=/dhaka/i.test(di.value)?60:120;calc()}});
+ dv.addEventListener('input',function(){dv.dataset.m=1;calc()});dc.addEventListener('input',calc);
+ var sv=h('button',{class:'pri'},'Save order (draft)');
+ sv.addEventListener('click',async function(){
+  var T=calc(),its=items.filter(function(r){return(parseInt(r.qt.value,10)||0)>0});
+  if(!its.length){err('Add at least one item');return}
+  if(!ph.value.trim()||!ad.value.trim()||!di.value.trim()){err('Phone, address and district are needed');return}
+  sv.disabled=true;var oid=null;
+  try{
+   var o=await sb.from('umb_orders').insert({business_id:BIZ,customer_id:c.cid,conversation_id:c.id,customer_name:c.name,phone:ph.value.trim(),address:ad.value.trim(),district:di.value.trim(),status:'draft',payment_method:pm.value,subtotal:T.s,discount:T.d,delivery_charge:T.dl,total:T.t,ai_assisted:!!(c.aim&&String(c.aim).indexOf('gemini')===0),created_by:UID}).select().single();
+   if(o.error)throw o.error;oid=o.data.id;
+   var rows=its.map(function(r){var p=P[r.ps.value],v=p.v[r.zs.value]||null,q=parseInt(r.qt.value,10);return{business_id:BIZ,order_id:oid,product_id:p.id,variant_id:v?v.id:null,product_name:p.name,code:p.code||null,size:(v&&v.z)||null,color:(v&&v.c)||null,qty:q,unit_price:p.price,unit_cost:p.cost_price||0,line_total:p.price*q}});
+   var r2=await sb.from('umb_order_items').insert(rows);
+   if(r2.error&&/generated|line_total/i.test(r2.error.message)){rows.forEach(function(x){delete x.line_total});r2=await sb.from('umb_order_items').insert(rows)}
+   if(r2.error)throw r2.error;
+   await sb.from('umb_customers').update({address:ad.value.trim(),district:di.value.trim()}).eq('id',c.cid);
+   dlg.close();dlg.remove();$('#st').textContent='Order '+o.data.order_no+' saved as draft'
+  }catch(e){if(oid)await sb.from('umb_orders').delete().eq('id',oid);err(e);sv.disabled=false}
+ });
+ dlg.append(h('b',{},'Create order for '+c.name),h('label',{},'Items'),box,h('p',{},h('button',{class:'gh',onclick:addRow},'+ Add item')),
+  h('div',{class:'two'},h('div',{},h('label',{},'Phone'),ph),h('div',{},h('label',{},'Payment'),pm)),
+  h('label',{},'Address'),ad,h('div',{class:'two'},h('div',{},h('label',{},'District'),di),h('div',{},h('label',{},'Delivery charge'),dv)),
+  h('label',{},'Discount'),dc,h('p',{},tot),
+  h('p',{class:'ac'},h('button',{class:'gh',onclick:function(){dlg.close();dlg.remove()}},'Cancel'),sv));
+ document.body.append(dlg);addRow();dlg.showModal()}
 })();
 </script>
 </body>
