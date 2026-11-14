@@ -421,6 +421,7 @@ if(x)openDw({kind:'product',key:x.name,title:x.name})})}});
 })();
 })();
  <script>
+  </script>
 /* Company brand from umb_settings: sidebar + top of dashboard */
 (function(){
 var BR={};try{BR=JSON.parse(localStorage.getItem('rs:brand')||'{}')}catch(e){}
@@ -448,6 +449,5 @@ paint();
 var n=0,t=setInterval(function(){n++;if(typeof sb!=='undefined'&&sb){clearInterval(t);load()}else if(n>40)clearInterval(t)},300);
 var c0=check;check=function(){return c0.apply(this,arguments).then(function(x){load();return x})};
 })();
-</script>
 </script>
 </body></html>
