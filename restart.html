@@ -208,7 +208,7 @@ var c=OV.ch[id];if(!c||c.isDisposed()){c=echarts.init(el);OV.ch[id]=c}return c}
 function fill(sel,list,all){var cur=sel.value;
 sel.innerHTML='<option value="">'+all+'</option>'+(list||[]).map(function(x){return '<option value="'+esc(x)+'">'+esc(x)+'</option>'}).join('');
 sel.value=(list||[]).indexOf(cur)>-1?cur:''}
-function paint(d){
+function paint(d){window.OVD=d;
 var k=d.kpi||{},p=k.prev||{};
 var warn=d.no_cost_items>0?'<span class="ovw">\u26A0 '+d.no_cost_items+' sold item'+(d.no_cost_items===1?' '+
 'has':'s have')+' no cost price, so profit looks too high</span>':'';
@@ -274,7 +274,7 @@ if(a.needs_human>0)rows.push('<div data-r="umb:inbox" style="cursor:pointer"><sp
 if(a.draft_orders>0)rows.push('<div><span>Draft orders not confirmed</span><b>'+a.draft_orders+'</b></div>');
 if(a.no_receipt>0)rows.push('<div><span>Confirmed orders without a receipt</span><b>'+a.no_receipt+'</b></div>');
 $('#ova').innerHTML=rows.length?rows.join(''):'<div class="ovn">All clear</div>';
-msg('')}
+msg('');document.dispatchEvent(new Event('ovpaint'))}
 async function load(){
 var box=$('#ov');if(!sb){box.hidden=true;return}box.hidden=false;
 var my=++OV.tok;
@@ -290,6 +290,134 @@ $('#ovc').addEventListener('change',function(){OV.cat=this.value;load()});
 $('#ovd').addEventListener('change',function(){OV.dist=this.value;load()});
 window.addEventListener('resize',function(){Object.keys(OV.ch).forEach(function(k){var c=OV.ch[k];if(c&&!c.isDisposed())c.resize()})});
 var _k=kpis;kpis=function(){var r=_k.apply(this,arguments);load();return r};
+ /* ===== Dashboard details panel (touch a KPI, chart point, slice, bar or row) ===== */
+(function(){
+if(!$('#ovk'))return;
+var DW={tok:0,biz:null};
+var css=document.createElement('style');
+css.textContent=[
+'#dws{position:fixed;inset:0;background:#0008;z-index:60;opacity:0;pointer-events:none;transition:.25s}',
+'#dws.on{opacity:1;pointer-events:auto}',
+'#dw{position:fixed;top:0;right:0;bottom:0;width:440px;max-width:100vw;z-index:61;display:flex;flex-direction:column;',
+'background:linear-gradient(180deg,#0e1a15f5,#09110ff5);backdrop-filter:blur(14px);border-left:1px solid var(--line);',
+'transform:translateX(102%);transition:transform .3s cubic-bezier(.2,.8,.2,1);box-shadow:-20px 0 60px #0009}',
+'#dw.on{transform:none}',
+'#dw header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 18px 12px;',
+'border-bottom:1px solid var(--line)}',
+'.dwt{font-size:17px;font-weight:700}',
+'.dwsub{font-size:12px;color:var(--muted);margin-top:4px}',
+'#dwx{border:1px solid var(--line);background:none;color:inherit;width:34px;height:34px;border-radius:10px;',
+'font-size:18px;cursor:pointer;flex:none}',
+'#dwb{overflow:auto;padding:14px 18px 28px;display:grid;gap:12px;align-content:start}',
+'.dwg{display:grid;grid-template-columns:1fr 1fr;gap:10px}',
+'.dwk{border:1px solid var(--line);border-radius:14px;padding:12px}',
+'.dwk small{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}',
+'.dwk b{font-size:18px}',
+'.dwo{border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:6px;background:#ffffff05}',
+'.dwo .r{display:flex;justify-content:space-between;gap:10px;align-items:baseline}',
+'.dwo .m{font-size:12px;color:var(--muted)}',
+'.dwo .i{font-size:12px;line-height:1.5}',
+'.dwo .a{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}',
+'.dwo button{border:1px solid var(--green);background:#19f39b1a;color:var(--green);padding:8px 14px;',
+'border-radius:10px;font-size:12px;cursor:pointer}',
+'.dwc{display:inline-block;font-size:10px;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}',
+'.dwc.ok{color:#19f39b;border-color:#19f39b66}.dwc.wn{color:#fbbf24;border-color:#fbbf2466}',
+'.dwn{font-size:13px;color:var(--muted);line-height:1.5;padding:6px 2px}',
+'#ovk .rs-card,.ovl div,.ovb>div,.ova div,#ovs1,#ovs2,#ovs3{cursor:pointer}',
+'#ovk .rs-card{transition:transform .2s,border-color .2s}',
+'#ovk .rs-card:hover{transform:translateY(-2px);border-color:#19f39b66}'
+].join('');
+document.head.appendChild(css);
+document.body.insertAdjacentHTML('beforeend','<div id="dws"></div><aside id="dw" aria-hidden="true"><header><div>'+
+'<div class="dwt" id="dwt"></div><div class="dwsub" id="dwsub"></div></div>'+
+'<button id="dwx" aria-label="Close">\u00D7</button></header><div id="dwb"></div></aside>');
+
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function tk(n){return '\u09f3'+Math.round(Number(n)||0).toLocaleString('en-IN')}
+function show(on){$('#dws').classList.toggle('on',on);$('#dw').classList.toggle('on',on);
+$('#dw').setAttribute('aria-hidden',on?'false':'true')}
+function sp(){var b=$('#ovr .on'),g=b?b.dataset.g:'30',t=new Date();t.setHours(0,0,0,0);
+var to=new Date(t);to.setDate(to.getDate()+1);var f=new Date(t);
+if(g==='month')f.setDate(1);else if(g!=='today')f.setDate(f.getDate()-(Number(g)-1));return{from:f,to:to,g:g}}
+function ptxt(){var s=sp(),n={today:'Today','7':'Last 7 days','30':'Last 30 days',month:'This month','90':'Last 90 days'}[s.g];
+var c=$('#ovc').value,d=$('#ovd').value;return n+(c?' \u00B7 '+c:'')+(d?' \u00B7 '+d:'')}
+async function biz(){if(DW.biz)return DW.biz;
+var s=await sb.auth.getSession(),u=s.data.session&&s.data.session.user;if(!u)return null;
+var m=await sb.from('business_members').select('business_id').eq('user_id',u.id).limit(1);
+if(m.error||!m.data.length)return null;DW.biz=m.data[0].business_id;return DW.biz}
+function when(i){return new Date(i).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
+function openChat(id){show(false);go('umb:inbox');var n=0;
+(function t(){try{var w=fr.contentWindow;if(w&&w.openConv&&w.openConv(id))return}catch(e){}
+if(++n<40)setTimeout(t,250)})()}
+function tile(l,v){return '<div class="dwk"><small>'+l+'</small><b>'+v+'</b></div>'}
+function row(x,mode){
+var items=(x.items||[]).map(function(i){return esc(i.name)+' \u00D7'+i.qty+
+(i.size||i.color?' \u00B7 '+esc([i.size,i.color].filter(Boolean).join(' ')):'')}).join('<br>');
+var st=x.status==='confirmed'?'ok':(x.status==='draft'?'wn':'');
+return '<div class="dwo"><div class="r"><b>'+esc(x.order_no||'Order')+'</b><b>'+tk(mode==='profit'?x.profit:x.total)+'</b></div>'
++'<div class="m">'+esc(x.customer||'Customer')+(x.district?' \u00B7 '+esc(x.district):'')+' \u00B7 '+when(x.at)+'</div>'
++'<div class="i">'+items+'</div>'
++'<div class="a"><span class="dwc '+st+'">'+esc(x.status)+'</span>'
++'<span class="dwc '+(x.paid==='paid'?'ok':'wn')+'">'+(x.paid==='paid'?'paid':'unpaid')+'</span>'
++(x.ai?'<span class="dwc ok">AI-assisted</span>':'')
++(mode==='profit'?'<span class="dwc">sale '+tk(x.total)+'</span>':'')+'</div>'
++(x.conversation_id?'<div class="a"><button data-chat="'+esc(x.conversation_id)+'">Open chat</button></div>':'')+'</div>'}
+function body(d,o){var s=d.summary||{},list=d.orders||[],h='';
+var avg=s.count>0?s.sales/s.count:0;
+if(o.mode==='profit')h+='<div class="dwg">'+tile('Revenue after discount',tk(s.net))+tile('Cost of goods',tk(s.cost))
++tile('Profit',tk(s.profit))+tile('Discounts given',tk(s.discount))+'</div>';
+else if(o.mode==='aov')h+='<div class="dwg">'+tile('Orders',s.count)+tile('Sales',tk(s.sales))
++tile('Average order',tk(avg))+tile('Delivery charges',tk(s.delivery))+'</div>';
+else h+='<div class="dwg">'+tile('Orders',s.count)+tile('Sales',tk(s.sales))
++tile('Profit',tk(s.profit))+tile('Delivery charges',tk(s.delivery))+'</div>';
+if(s.count>0&&Number(s.cost)===0)h+='<div class="dwn" style="color:#fbbf24">No cost prices are recorded on these orders, '+
+'so profit equals revenue.</div>';
+h+=list.length?list.map(function(x){return row(x,o.mode)}).join(''):'<div class="dwn">No orders match this.</div>';
+if(s.count>list.length)h+='<div class="dwn">Showing the latest '+list.length+' of '+s.count+' orders.</div>';
+$('#dwb').innerHTML=h}
+async function openDw(o){var my=++DW.tok;
+$('#dwt').textContent=o.title;$('#dwsub').textContent=ptxt();show(true);
+if(o.note){$('#dwb').innerHTML='<div class="dwn">'+esc(o.note)+'</div>';return}
+$('#dwb').innerHTML='<div class="dwn">Loading\u2026</div>';
+try{var b=await biz();if(!b)throw new Error('No business found for this sign-in');
+var s=sp(),r=await sb.rpc('umb_dashboard_orders',{p_business:b,p_from:s.from.toISOString(),p_to:s.to.toISOString(),
+p_kind:o.kind,p_key:o.key||null,p_category:$('#ovc').value||null,p_district:$('#ovd').value||null});
+if(my!==DW.tok)return;if(r.error)throw r.error;body(r.data,o)}
+catch(e){if(my===DW.tok)$('#dwb').innerHTML='<div class="dwn" style="color:#fb7185">Could not load the details: '+
+esc((e&&e.message)||e)+'</div>'}}
+$('#dwx').addEventListener('click',function(){show(false)});
+$('#dws').addEventListener('click',function(){show(false)});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')show(false)});
+$('#dwb').addEventListener('click',function(e){var b=e.target.closest('[data-chat]');if(b)openChat(b.dataset.chat)});
+function idx(box,e){var c=e.target;while(c&&c.parentNode!==box)c=c.parentNode;
+return c?Array.prototype.indexOf.call(box.children,c):-1}
+$('#ovk').addEventListener('click',function(e){var i=idx(this,e);if(i<0)return;
+var m=[{kind:'all',title:'Total sales'},{kind:'all',title:'Orders'},{kind:'all',title:'Average order value',mode:'aov'},
+{kind:'all',title:'Profit',mode:'profit'},
+{title:'Return rate',note:'Returns are not recorded yet. Once orders can be marked as returned, this card will list them.'},
+{kind:'ai',title:'AI-assisted orders'}][i];if(m)openDw(m)});
+$('#ovl').addEventListener('click',function(e){var i=idx(this,e),x=((window.OVD||{}).categories||[])[i];
+if(x)openDw({kind:'category',key:x.category,title:x.category})});
+$('#ovb').addEventListener('click',function(e){var i=idx(this,e),x=((window.OVD||{}).districts||[])[i];
+if(x)openDw({kind:'district',key:x.district,title:x.district})});
+$('#ova').addEventListener('click',function(e){var c=e.target.closest('div');if(!c)return;var t=c.textContent;
+if(t.indexOf('need a human')>-1)go('umb:inbox');
+else if(t.indexOf('Draft orders')>-1)openDw({kind:'draft',title:'Draft orders'});
+else if(t.indexOf('without a receipt')>-1)openDw({kind:'norcpt',title:'Orders without a receipt'})});
+document.addEventListener('ovpaint',function(){if(!window.echarts)return;var d=window.OVD||{};
+var c1=echarts.getInstanceByDom($('#ovs1'));
+if(c1){if(c1.__h)c1.getZr().off('click',c1.__h);
+c1.__h=function(p){var pt=[p.offsetX,p.offsetY];if(!c1.containPixel('grid',pt))return;
+var ser=d.series||[],i=Math.round(c1.convertFromPixel({xAxisIndex:0},pt)[0]);
+i=Math.max(0,Math.min(ser.length-1,i));var s=ser[i];
+if(s)openDw({kind:'day',key:s.day,title:new Date(s.day+'T00:00:00').toLocaleDateString('en-GB',
+{weekday:'short',day:'numeric',month:'short'})})};
+c1.getZr().on('click',c1.__h)}
+var c2=echarts.getInstanceByDom($('#ovs2'));
+if(c2){c2.off('click');c2.on('click',function(p){openDw({kind:'category',key:p.name,title:p.name})})}
+var c3=echarts.getInstanceByDom($('#ovs3'));
+if(c3){c3.off('click');c3.on('click',function(p){var x=(d.top_products||[])[p.dataIndex];
+if(x)openDw({kind:'product',key:x.name,title:x.name})})}});
 })();
 </script>
 </body></html>
