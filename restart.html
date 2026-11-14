@@ -4,6 +4,7 @@
 <title>Restart Command Center</title>
 <link rel="stylesheet" href="restart-theme.css?v=1">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+ <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
 <style>
 .sb{display:grid;gap:2px;margin:2px 0 6px 20px;padding-left:10px;border-left:1px solid var(--line)}
 .sb button{border:0;background:none;color:var(--muted);text-align:left;padding:8px 10px;border-radius:9px;font-size:12px;cursor:pointer;transition:.2s}
@@ -127,5 +128,168 @@ document.addEventListener('click',function(e){var b=e.target.closest('[data-r]')
 $('#menu').addEventListener('click',function(){$('#side').classList.add('open');$('#shade').hidden=false});
 $('#shade').addEventListener('click',function(){$('#side').classList.remove('open');$('#shade').hidden=true});
 go('home');check().then(kpis);
+ /* ===== Dashboard Overview (sales numbers from umb_dashboard_overview) ===== */
+(function(){
+var OV={biz:null,rng:'30',cat:'',dist:'',tok:0,ch:{}};
+var PAL=['#19f39b','#38bdf8','#a78bfa','#fbbf24','#fb7185','#64748b'];
+var TT={backgroundColor:'#0b1713',borderColor:'#19f39b40',borderWidth:1,textStyle:{color:'#e9fff5',fontSize:12},
+extraCssText:'border-radius:12px;box-shadow:0 8px 30px #000a'};
+var css=document.createElement('style');
+css.textContent=[
+'#ov{margin-top:6px}',
+'.ovf{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 14px}',
+'.ovr{display:flex;gap:6px;flex-wrap:wrap}',
+'.ovr button{border:1px solid var(--line);background:none;color:var(--muted);padding:8px 12px;border-radius:999px;font-size:12px;cursor:pointer;transition:.2s}',
+'.ovr button.on{color:var(--green);border-color:var(--green);background:#19f39b1a}',
+'.ovs{background:#0b1511;color:inherit;border:1px solid var(--line);border-radius:10px;padding:9px 10px;font-size:13px;max-width:100%}',
+'.ovk{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(165px,1fr))}',
+'.ovk .kv{font-size:26px}',
+'.ovd{display:block;font-size:11px;margin-top:6px;color:var(--muted)}',
+'.ovd.u{color:#19f39b}.ovd.d{color:#fb7185}',
+'.ovw{display:block;font-size:10px;margin-top:4px;color:#fbbf24}',
+'.ovg{display:grid;gap:12px;margin-top:12px;grid-template-columns:2fr 1fr}',
+'.ovg.three{grid-template-columns:1fr 1fr 1fr}',
+'@media(max-width:900px){.ovg,.ovg.three{grid-template-columns:1fr}}',
+'.ovh{font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin-bottom:10px}',
+'.ovc{width:100%;height:260px}',
+'.ovl{display:grid;gap:8px;margin-top:6px;font-size:12px}',
+'.ovl div{display:flex;align-items:center;gap:8px}',
+'.ovl i{width:9px;height:9px;border-radius:50%;flex:none}',
+'.ovl span{margin-left:auto;color:var(--muted)}',
+'.ovb{display:grid;gap:10px}',
+'.ovb .t{display:flex;justify-content:space-between;font-size:12px}',
+'.ovb .bar{height:6px;border-radius:6px;background:#ffffff0d;margin-top:5px;overflow:hidden}',
+'.ovb .bar i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#19f39b55,#19f39b)}',
+'.ova{display:grid;gap:8px;font-size:13px}',
+'.ova div{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px}',
+'.ova b{color:#fbbf24}',
+'.ovn{font-size:12px;color:var(--muted);padding:26px 4px;text-align:center}',
+'#ovm{font-size:12px;color:#fb7185;margin-top:10px}'
+].join('');
+document.head.appendChild(css);
+var html=''
++'<div id="ov" hidden>'
++'<div class="rs-eyebrow" style="margin-top:26px">SALES OVERVIEW</div>'
++'<div class="ovf">'
++'<div class="ovr" id="ovr"><button data-g="today">Today</button><button data-g="7">7 days</button><button '+
+'data-g="30" class="on">30 days</button><button data-g="month">This month</button><button data-g="90">90 days</button></div>'
++'<select class="ovs" id="ovc"><option value="">All categories</option></select>'
++'<select class="ovs" id="ovd"><option value="">All districts</option></select>'
++'</div>'
++'<div class="ovk rs-stagger" id="ovk"></div>'
++'<div class="ovg"><div class="rs-card p"><div class="ovh">SALES OVER TIME</div><div class="ovc" id="ovs1"></div></div>'
++'<div class="rs-card p"><div class="ovh">SALES BY CATEGORY</div><div class="ovc" id="ovs2" style="height:190px"></div><div '+
+'class="ovl" id="ovl"></div></div></div>'
++'<div class="ovg three"><div class="rs-card p"><div class="ovh">TOP PRODUCTS</div><div class="ovc" id="ovs3" '+
+'style="height:240px"></div></div>'
++'<div class="rs-card p"><div class="ovh">DISTRICT RANKING</div><div class="ovb" id="ovb"></div></div>'
++'<div class="rs-card p"><div class="ovh">NEEDS ATTENTION</div><div class="ova" id="ova"></div></div></div>'
++'<div id="ovm"></div>'
++'</div>';
+$('#hc').insertAdjacentHTML('afterend',html);
+
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function tk(n){return '\u09f3'+Math.round(Number(n)||0).toLocaleString('en-IN')}
+function span(){var t=new Date();t.setHours(0,0,0,0);var to=new Date(t);to.setDate(to.getDate()+1);var f=new Date(t);
+if(OV.rng==='month')f.setDate(1);else if(OV.rng!=='today')f.setDate(f.getDate()-(Number(OV.rng)-1));
+return{from:f,to:to}}
+function dl(cur,prev){cur=Number(cur)||0;prev=Number(prev)||0;
+if(!prev)return '<span class="ovd">no earlier data to compare</span>';
+var p=(cur-prev)/prev*100;return '<span class="ovd '+(p>=0?'u':'d')+'">'+(p>=0?'\u25B2 ':'\u25BC ')+Math.abs(p).toFixed(1)+'% '+
+'vs previous period</span>'}
+function card(l,v,x){return '<div class="rs-card p"><div class="rs-sub">'+l+'</div><div class="kv">'+v+'</div>'+x+'</div>'}
+function msg(t){$('#ovm').textContent=t||''}
+async function bizId(){if(OV.biz)return OV.biz;
+var s=await sb.auth.getSession(),u=s.data.session&&s.data.session.user;if(!u)return null;
+var m=await sb.from('business_members').select('business_id').eq('user_id',u.id).limit(1);
+if(m.error||!m.data.length)return null;OV.biz=m.data[0].business_id;return OV.biz}
+function chart(id){var el=$('#'+id);if(!window.echarts||!el)return null;
+var c=OV.ch[id];if(!c||c.isDisposed()){c=echarts.init(el);OV.ch[id]=c}return c}
+function fill(sel,list,all){var cur=sel.value;
+sel.innerHTML='<option value="">'+all+'</option>'+(list||[]).map(function(x){return '<option value="'+esc(x)+'">'+esc(x)+'</option>'}).join('');
+sel.value=(list||[]).indexOf(cur)>-1?cur:''}
+function paint(d){
+var k=d.kpi||{},p=k.prev||{};
+var warn=d.no_cost_items>0?'<span class="ovw">\u26A0 '+d.no_cost_items+' sold item'+(d.no_cost_items===1?' '+
+'has':'s have')+' no cost price, so profit looks too high</span>':'';
+$('#ovk').innerHTML=
+card('TOTAL SALES',tk(k.sales),dl(k.sales,p.sales))
++card('ORDERS',Number(k.orders||0).toLocaleString('en-IN'),dl(k.orders,p.orders))
++card('AVG ORDER VALUE',tk(k.aov),dl(k.aov,p.aov))
++card('PROFIT',tk(k.profit),dl(k.profit,p.profit)+warn)
++card('RETURN RATE','\u2013','<span class="ovd">returns are not recorded yet</span>')
++card('AI DRAFT CONVERSION',k.ai_conversion==null?'\u2013':k.ai_conversion+'%','<span class="ovd">AI-assisted '+
+'orders per chat with an AI reply</span>');
+fill($('#ovc'),(d.filters||{}).categories,'All categories');
+fill($('#ovd'),(d.filters||{}).districts,'All districts');
+var ser=d.series||[],hasData=(k.orders||0)>0;
+var c1=chart('ovs1');
+if(c1){c1.setOption({animationDuration:700,
+grid:{left:6,right:14,top:14,bottom:4,containLabel:true},
+tooltip:Object.assign({trigger:'axis',axisPointer:{type:'line',lineStyle:{color:'#19f39b55'}},
+formatter:function(a){var s=ser[a[0].dataIndex];return '<b>'+esc(s.day)+'</b><br>'+tk(s.sales)+' \u00B7 '+s.orders+' '+
+'order'+(s.orders===1?'':'s')}},TT),
+xAxis:{type:'category',boundaryGap:false,axisLine:{show:false},axisTick:{show:false},
+axisLabel:{color:'#7b9a8c',fontSize:10,hideOverlap:true},
+data:ser.map(function(s){return new Date(s.day+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})})},
+yAxis:{type:'value',axisLabel:{color:'#7b9a8c',fontSize:10,formatter:function(v){return v>=1000?(v/1000)+'k':v}},
+splitLine:{lineStyle:{color:'#ffffff0d',type:'dashed'}}},
+series:[{type:'line',smooth:0.35,showSymbol:false,symbolSize:8,data:ser.map(function(s){return s.sales}),
+lineStyle:{width:3,color:'#19f39b'},itemStyle:{color:'#19f39b'},
+areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#19f39b55'},{offset:1,color:'#19f39b00'}])}}]},
+true);c1.resize()}
+var cats=d.categories||[],ctot=cats.reduce(function(a,x){return a+Number(x.revenue||0)},0);
+var c2=chart('ovs2');
+if(c2){c2.setOption({animationDuration:700,
+title:{text:tk(ctot),subtext:'Revenue',left:'center',top:'36%',textStyle:{color:'#e9fff5',fontSize:19,fontWeight:700},
+subtextStyle:{color:'#7b9a8c',fontSize:11}},
+tooltip:Object.assign({trigger:'item',formatter:function(a){return esc(a.name)+'<br>'+tk(a.value)+' \u00B7 '+
+''+a.percent+'%'}},TT),
+series:[{type:'pie',radius:['66%','74%'],center:['50%','50%'],label:{show:false},labelLine:{show:false},
+itemStyle:{borderRadius:20,borderColor:'#0c1511',borderWidth:5},emphasis:{scaleSize:5},
+data:cats.map(function(x,i){return{name:x.category,value:Number(x.revenue||0),itemStyle:{color:PAL[i%PAL.length]}}})}]},
+true);c2.resize()}
+$('#ovl').innerHTML=cats.length?cats.map(function(x,i){var pc=ctot?Math.round(Number(x.revenue||0)/ctot*100):0;
+return '<div><i style="background:'+PAL[i%PAL.length]+'"></i>'+esc(x.category)+'<span>'+tk(x.revenue)+' \u00B7 '+
+''+pc+'%</span></div>'}).join(''):'<div class="ovn">No sales in this period</div>';
+var tp=d.top_products||[],c3=chart('ovs3');
+if(c3){$('#ovs3').style.height=Math.max(150,tp.length*36+24)+'px';
+c3.setOption({animationDuration:700,grid:{left:4,right:62,top:6,bottom:6,containLabel:true},
+tooltip:Object.assign({trigger:'item',formatter:function(a){var x=tp[a.dataIndex];return esc(x.name)+'<br>'+tk(x.revenue)+' '+
+'\u00B7 '+x.qty+' sold'}},TT),
+xAxis:{type:'value',show:false},
+yAxis:{type:'category',inverse:true,axisLine:{show:false},axisTick:{show:false},
+axisLabel:{color:'#c9ddd3',fontSize:11,width:92,overflow:'truncate'},data:tp.map(function(x){return x.name})},
+series:[{type:'bar',barWidth:12,showBackground:true,backgroundStyle:{color:'#ffffff08',borderRadius:8},
+itemStyle:{borderRadius:[0,8,8,0],color:new echarts.graphic.LinearGradient(0,0,1,0,[{offset:0,color:'#19f39b55'},
+{offset:1,color:'#19f39b'}])},
+label:{show:true,position:'right',color:'#e9fff5',fontSize:11,formatter:function(a){return tk(a.value)}},
+data:tp.map(function(x){return Number(x.revenue||0)})}]},true);c3.resize()}
+var ds=d.districts||[],dmax=ds.reduce(function(a,x){return Math.max(a,Number(x.sales||0))},0)||1;
+$('#ovb').innerHTML=ds.length?ds.map(function(x){return '<div><div class="t"><span>'+esc(x.district)+'</span><span>'+tk(x.sales)+' '+
+'\u00B7 '+x.orders+' order'+(x.orders===1?'':'s')+'</span></div><div class="bar"><i style="width:'+Math.round(Number(x.sales||0)/dmax*100)+'%"></i></div></div>'}).join(''):'<div '+
+'class="ovn">No orders in this period</div>';
+var a=d.attention||{},rows=[];
+if(a.needs_human>0)rows.push('<div data-r="umb:inbox" style="cursor:pointer"><span>Chats that need a human</span><b>'+a.needs_human+'</b></div>');
+if(a.draft_orders>0)rows.push('<div><span>Draft orders not confirmed</span><b>'+a.draft_orders+'</b></div>');
+if(a.no_receipt>0)rows.push('<div><span>Confirmed orders without a receipt</span><b>'+a.no_receipt+'</b></div>');
+$('#ova').innerHTML=rows.length?rows.join(''):'<div class="ovn">All clear</div>';
+msg('')}
+async function load(){
+var box=$('#ov');if(!sb){box.hidden=true;return}box.hidden=false;
+var my=++OV.tok;
+try{var biz=await bizId();if(!biz)throw new Error('No business found for this sign-in');
+var sp=span();
+var r=await sb.rpc('umb_dashboard_overview',{p_business:biz,p_from:sp.from.toISOString(),p_to:sp.to.toISOString(),
+p_category:OV.cat||null,p_district:OV.dist||null});
+if(my!==OV.tok)return;if(r.error)throw r.error;paint(r.data)}
+catch(e){if(my===OV.tok)msg('Could not load the overview: '+((e&&e.message)||e))}}
+$('#ovr').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;
+OV.rng=b.dataset.g;Array.prototype.forEach.call($('#ovr').children,function(x){x.classList.toggle('on',x===b)});load()});
+$('#ovc').addEventListener('change',function(){OV.cat=this.value;load()});
+$('#ovd').addEventListener('change',function(){OV.dist=this.value;load()});
+window.addEventListener('resize',function(){Object.keys(OV.ch).forEach(function(k){var c=OV.ch[k];if(c&&!c.isDisposed())c.resize()})});
+var _k=kpis;kpis=function(){var r=_k.apply(this,arguments);load();return r};
+})();
 </script>
 </body></html>
