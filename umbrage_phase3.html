@@ -774,6 +774,66 @@ async function receiptDlg(o,its){
  dlg.append(h('b',{},'Receipt for '+o.order_no+' · '+o.customer_name),h('p',{},h('small',{},'Header: '+CO.name+(CO.phone?' · '+CO.phone:'')+' (change it in Settings & Data). Items, address and totals come from the order.')),
   h('label',{},'Payment'),ps,h('label',{},'Footer note'),ft,h('p',{class:'ac'},close,ok));
  document.body.append(dlg);dlg.showModal()}
+  /* ===== Executive Overview ===== */
+(function(){
+ $('#t-prod').after(h('section',{id:'t-ovw',hidden:''},h('div',{id:'ovl'})));
+ document.querySelectorAll('[data-t="inbox"]').forEach(function(b){
+  var mb=b.closest('.mobilebar'),n=document.createElement('button');n.dataset.t='ovw';
+  n.innerHTML=mb?'<span>◈</span>Overview':'<span class="ico">◈</span> Overview';
+  n.addEventListener('click',function(){tab('ovw')});b.before(n);
+  if(mb){mb.style.overflowX='auto';mb.style.justifyContent='flex-start';mb.querySelectorAll('button').forEach(function(x){x.style.flex='0 0 auto';x.style.minWidth='68px'})}});
+})();
+var _tab2=tab;
+tab=function(t){var s=$('#t-ovw');
+ if(t==='ovw'){['inbox','camp','set','prod','test','learn','ord'].forEach(function(x){var e=$('#t-'+x);if(e)e.hidden=true});s.hidden=false;
+  document.querySelectorAll('[data-t]').forEach(function(b){b.classList.toggle('active',b.dataset.t==='ovw')});
+  $('#pt').textContent='Overview';renderOvw();return}
+ s.hidden=true;_tab2(t)};
+var OP='30',LOW=3;
+function money(n){return '৳'+Math.round(n).toLocaleString('en-IN')}
+function oRow(a,b){return h('div',{style:'display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid #ffffff12'},h('span',{},a),h('b',{},b))}
+function oKpi(l,v){return h('div',{class:'k'},h('b',{},v),h('span',{},l))}
+async function renderOvw(){
+ var p=$('#ovl');
+ if(!sb){p.replaceChildren(h('div',{class:'notice'},'Connect Supabase in Settings & Data to see the overview.'));return}
+ var a=await sb.from('umb_orders').select('*').eq('business_id',BIZ).order('created_at',{ascending:false}).limit(2000);
+ if(a.error){err(a.error);return}
+ var b=await sb.from('umb_order_items').select('*').eq('business_id',BIZ).limit(10000);
+ if(b.error){err(b.error);return}
+ var c=await sb.from('umb_receipts').select('order_id').eq('business_id',BIZ);
+ if(c.error){err(c.error);return}
+ var live=function(o){return o.status!=='draft'&&o.status!=='cancelled'},
+  dk=function(d){return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()},
+  when=function(o){return new Date(o.confirmed_at||o.created_at)},S=new Date(0);
+ if(OP!=='all'){S=new Date();S.setHours(0,0,0,0);S.setDate(S.getDate()-(Number(OP)-1))}
+ var all=a.data.filter(live),os=all.filter(function(o){return when(o)>=S}),oid={},rev=0,sub=0,cost=0;
+ os.forEach(function(o){oid[o.id]=1;rev+=Number(o.total)||0;sub+=(Number(o.subtotal)||0)-(Number(o.discount)||0)});
+ var is=b.data.filter(function(i){return oid[i.order_id]});
+ is.forEach(function(i){cost+=(Number(i.unit_cost)||0)*(Number(i.qty)||0)});
+ var nocost=is.filter(function(i){return !Number(i.unit_cost)}).length;
+ var n=OP==='all'?30:Math.max(7,Number(OP)),bk=[],map={},d,k;
+ for(k=n-1;k>=0;k--){d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-k);var e={d:d,v:0};bk.push(e);map[dk(d)]=e}
+ all.forEach(function(o){var e=map[dk(when(o))];if(e)e.v+=Number(o.total)||0});
+ var mx=Math.max.apply(null,bk.map(function(e){return e.v}).concat([0]));
+ var g={};
+ is.forEach(function(i){var x=g[i.product_name]=g[i.product_name]||{q:0,r:0,c:0},q=Number(i.qty)||0;x.q+=q;x.r+=i.line_total!=null?Number(i.line_total):q*Number(i.unit_price);x.c+=q*(Number(i.unit_cost)||0)});
+ var top=Object.keys(g).sort(function(x,y){return g[y].r-g[x].r}).slice(0,5);
+ var hr={};c.data.forEach(function(r){hr[r.order_id]=1});
+ var norc=all.filter(function(o){return !hr[o.id]}).length,dr=a.data.filter(function(o){return o.status==='draft'}).length;
+ var low=[];
+ PR.forEach(function(pr){if(pr.active===false)return;(pr.v||[]).forEach(function(v){if(Number(v.q)<=LOW)low.push(pr.name+' '+(v.z||'')+(v.c?' / '+v.c:'')+': '+(Number(v.q)>0?v.q+' left':'out of stock'))})});
+ var sel=h('select',{},[['1','Today'],['7','Last 7 days'],['30','Last 30 days'],['all','All time']].map(function(x){return h('option',{value:x[0]},x[1])}));
+ sel.value=OP;sel.addEventListener('change',function(){OP=sel.value;renderOvw()});
+ var chart=h('div',{style:'display:flex;align-items:flex-end;gap:2px;height:96px;margin:10px 0 4px'},bk.map(function(e){return h('div',{title:e.d.toLocaleDateString()+': '+money(e.v),style:'flex:1;min-height:2px;border-radius:3px 3px 0 0;background:#19f39b;opacity:'+(e.v?1:.25)+';height:'+(mx?Math.max(2,Math.round(e.v/mx*100)):2)+'%'})}));
+ p.replaceChildren(
+  h('div',{style:'display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px'},h('b',{},(CO&&CO.name?CO.name+' ':'')+'overview'),sel),
+  h('div',{style:'display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px'},oKpi('Revenue',money(rev)),oKpi('Orders',String(os.length)),oKpi('Gross profit',money(sub-cost)),oKpi('Average order',money(os.length?rev/os.length:0))),
+  nocost?h('div',{class:'notice'},nocost+' sold item(s) have no cost price, so profit is overstated. Add costs on the Products page.'):null,
+  h('div',{class:'card'},h('b',{},'Revenue by day (last '+n+' days)'),chart,h('div',{style:'display:flex;justify-content:space-between'},h('small',{},bk[0].d.toLocaleDateString()),h('small',{},'Best day '+money(mx)),h('small',{},'Today'))),
+  h('div',{class:'card'},h('b',{},'Top products'),top.length?top.map(function(nm){var x=g[nm];return oRow(nm+' × '+x.q,money(x.r)+' ('+(x.r?Math.round((x.r-x.c)/x.r*100):0)+'% margin)')}):h('div',{},h('small',{},'No sales in this period'))),
+  h('div',{class:'card'},h('b',{},'Needs attention'),oRow('Draft orders waiting',String(dr)),oRow('Confirmed orders without a receipt',String(norc)),oRow('Chats needing a human',String(convs.filter(function(x){return x.human}).length)),
+   low.length?low.slice(0,8).map(function(t){return h('div',{style:'padding:4px 0'},h('small',{},'Low stock: '+t))}):oRow('Low stock','None')),
+  h('div',{class:'card'},h('b',{},'Pipeline now'),STAGES.map(function(s){return oRow(s,String(convs.filter(function(x){return x.stage===s}).length))})))}
 })();
 </script>
 </body>
