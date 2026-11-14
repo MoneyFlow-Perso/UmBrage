@@ -834,6 +834,7 @@ async function renderOvw(){
   h('div',{class:'card'},h('b',{},'Needs attention'),oRow('Draft orders waiting',String(dr)),oRow('Confirmed orders without a receipt',String(norc)),oRow('Chats needing a human',String(convs.filter(function(x){return x.human}).length)),
    low.length?low.slice(0,8).map(function(t){return h('div',{style:'padding:4px 0'},h('small',{},'Low stock: '+t))}):oRow('Low stock','None')),
   h('div',{class:'card'},h('b',{},'Pipeline now'),STAGES.map(function(s){return oRow(s,String(convs.filter(function(x){return x.stage===s}).length))})))}
+  window.openConv=function(id){var c=get(id);if(!c)return false;cur=id;c.unread=0;persist();document.body.classList.add('chat');tab('inbox');render();return true};
 })();
 </script>
 </body>
