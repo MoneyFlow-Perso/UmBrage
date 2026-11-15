@@ -1359,7 +1359,7 @@ var _pe=paintExtras;paintExtras=function(){_pe.apply(this,arguments);paintStock(
 (function(){
 var DS=[['pending','Pending'],['shipped','On the way'],['delivered','Delivered'],['returned','Returned'],['failed','Failed']],
 DL={pending:'Pending',shipped:'On the way',delivered:'Delivered',returned:'Returned',failed:'Failed'},
-COUR=['Pathao','Steadfast','RedX','Paperfly','eCourier','Sundarban'],FL='all';
+COUR=['Pathao','Steadfast','RedX','Paperfly','eCourier','Sundarban','Own rider','Pickup','Hand delivery'],FL='all';
 $('#t-ord').after(h('section',{id:'t-deliv',hidden:''},h('div',{class:'ovr',id:'dvf',style:'margin:6px 0 12px'}),h('div',{id:'dvl'})));
 window.DELIV_TAB='deliv';
 var _t6=tab;
@@ -1397,7 +1397,7 @@ if(s==='shipped'){acts.push(btn('Delivered',true,function(){doneDlg(o,cod)}));ac
 if(s==='shipped'||s==='delivered')acts.push(btn('Returned',false,function(){retDlg(o)}));
 if(s==='failed')acts.push(btn('Ship again',true,function(){shipDlg(o)}));
 if(s!=='pending')acts.push(btn('Reset',false,function(){setSt(o,{delivery_status:'pending',courier:null,tracking_no:null,shipped_at:null,delivered_at:null,returned_at:null,return_reason:null})}));
-return h('div',{class:'card'},
+return h('div',{class:'card','data-oid':o.id,'data-st':s,'data-cod':o.payment_status==='paid'?'':o.total,'data-cs':o.courier_status||'','data-cour':o.courier||'','data-cid':o.consignment_id?'1':''},
 h('p',{},h('b',{},o.order_no+' \u00B7 '+o.customer_name),' ',tg(DL[s]||s,s==='delivered'?'ok':(s==='pending'?'':'wn')),late?h('small',{style:'color:#fbbf24'},'  waiting over 3 days'):null,h('br'),h('small',{},new Date(o.created_at).toLocaleString())),
 its.map(function(i){return h('div',{},i.qty+' \u00D7 '+i.product_name+(i.size?' '+i.size:'')+(i.color?' / '+i.color:''))}),
 h('p',{},h('small',{},(o.phone||'')+' | '+(o.address||'')+', '+(o.district||'')),h('br'),
