@@ -1695,6 +1695,16 @@ s.hidden=true;_t8(t)};
 var anchor=document.querySelector('#ov .mvhint')||document.getElementById('ovm');
 if(anchor&&!document.getElementById('insgo'))anchor.insertAdjacentHTML('beforebegin','<div id="insgo" style="grid-column:1/-1;margin-top:6px"><button class="rs-btn" data-go="soon:Reports & Insights" style="width:100%">\u2733 AI Insights - analyse my sales</button></div>');
 })();
+  /* ===== Deliveries button on the phone bottom bar (bar scrolls sideways when it is full) ===== */
+(function(){
+var mb=document.querySelector('.mobilebar');if(!mb||mb.querySelector('[data-t="deliv"]'))return;
+var st=document.createElement('style');
+st.textContent='.mobilebar{overflow-x:auto;scrollbar-width:none}.mobilebar::-webkit-scrollbar{display:none}.mobilebar button{flex:0 0 auto;min-width:58px}';
+document.head.appendChild(st);
+var n=document.createElement('button');n.dataset.t='deliv';n.innerHTML='<span>\u26DF</span>Delivery';
+n.addEventListener('click',function(){tab('deliv');try{n.scrollIntoView({inline:'center',block:'nearest'})}catch(e){}});
+var o=mb.querySelector('[data-t="ord"]');if(o)o.after(n);else mb.appendChild(n);
+})();
   tab('dash');
 var _n=0,_t=setInterval(function(){_n++;var on=!$('#t-dash').hidden;if(on)paintExtras();if(sb&&BIZ){clearInterval(_t);if(on)kpis()}else if(_n>60)clearInterval(_t)},500);
 
