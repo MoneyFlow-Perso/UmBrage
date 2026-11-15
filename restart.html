@@ -223,6 +223,7 @@ input[type=checkbox]{accent-color:#19f39b}
   <nav class="nav"><button data-t="dash" class="active"><span class="ico">⌂</span> Overview</button></nav>
   <div class="navlabel">SALES &amp; ANALYTICS</div>
   <nav class="nav">
+    <button data-t="deliv"><span class="ico">➤</span> Deliveries</button>
     <button data-t="prod"><span class="ico">▦</span> Products</button>
     <button data-t="crm:leads"><span class="ico">♧</span> Leads &amp; Customers</button>
     <button data-t="crm:orders"><span class="ico">♧</span> CRM Orders</button>
@@ -1353,7 +1354,80 @@ function run(){if(!sb||!BIZ)return;var sp=span();paintStock();
 [['#xd',paintDeliv],['#xc',paintCash],['#xu',paintCust]].forEach(function(p){p[1](sp).catch(function(e){$(p[0]).innerHTML=head('ERROR')+'<div class="ovn">'+E((e&&e.message)||e)+'</div>'})})}
 document.addEventListener('ovpaint',run);
 var _pe=paintExtras;paintExtras=function(){_pe.apply(this,arguments);paintStock()};
-})();  
+})();
+  /* ===== Deliveries page: status, courier, tracking and items for every confirmed order ===== */
+(function(){
+var DS=[['pending','Pending'],['shipped','On the way'],['delivered','Delivered'],['returned','Returned'],['failed','Failed']],
+DL={pending:'Pending',shipped:'On the way',delivered:'Delivered',returned:'Returned',failed:'Failed'},
+COUR=['Pathao','Steadfast','RedX','Paperfly','eCourier','Sundarban'],FL='all';
+$('#t-ord').after(h('section',{id:'t-deliv',hidden:''},h('div',{class:'ovr',id:'dvf',style:'margin:6px 0 12px'}),h('div',{id:'dvl'})));
+window.DELIV_TAB='deliv';
+var _t6=tab;
+tab=function(t){var s=$('#t-deliv');
+if(t==='deliv'){document.querySelectorAll('main section[id^="t-"]').forEach(function(x){x.hidden=true});s.hidden=false;
+var M=$('#m');if(M)M.hidden=true;var g=$('#ngs');if(g)g.style.display='none';
+document.querySelectorAll('[data-t]').forEach(function(b){b.classList.toggle('active',b.dataset.t==='deliv')});
+$('#pt').textContent='Deliveries';renderDeliv();return}
+s.hidden=true;_t6(t)};
+function fd(d){return d?new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):''}
+function btn(l,p,f){return h('button',{class:p?'pri':'gh',onclick:f},l)}
+async function renderDeliv(){var p=$('#dvl');
+if(!sb){p.replaceChildren(h('div',{class:'notice'},'Connect Supabase in Settings & Data to see deliveries.'));return}
+var r=await sb.from('umb_orders').select('*').eq('business_id',BIZ).eq('status','confirmed').order('created_at',{ascending:false}).limit(100);
+if(r.error){err(r.error);return}
+var ids=r.data.map(function(o){return o.id}),by={};
+if(ids.length){var it=await sb.from('umb_order_items').select('*').in('order_id',ids);
+if(it.error){err(it.error);return}it.data.forEach(function(i){(by[i.order_id]=by[i.order_id]||[]).push(i)})}
+var cnt={all:r.data.length};DS.forEach(function(d){cnt[d[0]]=0});
+r.data.forEach(function(o){var s=o.delivery_status||'pending';if(cnt[s]==null)s='pending';cnt[s]++});
+var f=$('#dvf');f.replaceChildren.apply(f,[['all','All']].concat(DS).map(function(d){return h('button',{'data-f':d[0],class:d[0]===FL?'on':''},d[1]+' '+cnt[d[0]])}));
+var list=r.data.filter(function(o){return FL==='all'||(o.delivery_status||'pending')===FL});
+if(!list.length){p.replaceChildren(h('div',{class:'notice'},r.data.length?'No orders in this status.':'No confirmed orders yet.'));return}
+p.replaceChildren.apply(p,list.map(function(o){return dCard(o,by[o.id]||[])}))}
+$('#dvf').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;FL=b.dataset.f;renderDeliv()});
+function dCard(o,its){
+var s=o.delivery_status||'pending',late=(s==='pending'||s==='shipped')&&Date.now()-new Date(o.created_at).getTime()>3*864e5,
+cod=o.payment_method==='cod'&&o.payment_status!=='paid',info=[],acts=[];
+if(o.courier)info.push(o.courier+(o.tracking_no?' \u00B7 '+o.tracking_no:''));
+if(o.shipped_at)info.push('Shipped '+fd(o.shipped_at));
+if(o.delivered_at)info.push('Delivered '+fd(o.delivered_at));
+if(o.returned_at)info.push('Returned '+fd(o.returned_at)+(o.return_reason?' \u00B7 '+o.return_reason:''));
+if(s==='pending')acts.push(btn('Mark shipped',true,function(){shipDlg(o)}));
+if(s==='shipped'){acts.push(btn('Delivered',true,function(){doneDlg(o,cod)}));acts.push(btn('Failed',false,function(){setSt(o,{delivery_status:'failed'})}))}
+if(s==='shipped'||s==='delivered')acts.push(btn('Returned',false,function(){retDlg(o)}));
+if(s==='failed')acts.push(btn('Ship again',true,function(){shipDlg(o)}));
+if(s!=='pending')acts.push(btn('Reset',false,function(){setSt(o,{delivery_status:'pending',courier:null,tracking_no:null,shipped_at:null,delivered_at:null,returned_at:null,return_reason:null})}));
+return h('div',{class:'card'},
+h('p',{},h('b',{},o.order_no+' \u00B7 '+o.customer_name),' ',tg(DL[s]||s,s==='delivered'?'ok':(s==='pending'?'':'wn')),late?h('small',{style:'color:#fbbf24'},'  waiting over 3 days'):null,h('br'),h('small',{},new Date(o.created_at).toLocaleString())),
+its.map(function(i){return h('div',{},i.qty+' \u00D7 '+i.product_name+(i.size?' '+i.size:'')+(i.color?' / '+i.color:''))}),
+h('p',{},h('small',{},(o.phone||'')+' | '+(o.address||'')+', '+(o.district||'')),h('br'),
+h('small',{},(o.payment_method||'').toUpperCase()+(cod?' \u00B7 collect ':' \u00B7 total ')+'\u09f3'+o.total)),
+info.length?h('p',{},h('small',{},info.join(' | '))):null,
+acts.length?h('p',{class:'ac'},acts):null)}
+async function setSt(o,patch){
+var r=await sb.from('umb_orders').update(patch).eq('id',o.id);
+if(r.error){err(r.error);return false}
+document.dispatchEvent(new Event('ovpaint'));renderDeliv();return true}
+function dlgOf(title,fields,ok,fn){
+var dlg,sv=h('button',{class:'pri'},ok);
+sv.addEventListener('click',async function(){sv.disabled=true;var x=await fn();if(x===false){sv.disabled=false;return}dlg.close();dlg.remove()});
+dlg=h('dialog',{},h('b',{},title),fields,h('p',{class:'ac'},h('button',{class:'gh',onclick:function(){dlg.close();dlg.remove()}},'Cancel'),sv));
+document.body.append(dlg);dlg.showModal()}
+function shipDlg(o){
+var c=h('input',{list:'dvco',placeholder:'Pathao, Steadfast...',value:o.courier||''}),t=h('input',{placeholder:'Optional',value:o.tracking_no||''});
+dlgOf('Mark shipped \u00B7 '+o.order_no,[h('datalist',{id:'dvco'},COUR.map(function(x){return h('option',{value:x})})),h('label',{},'Courier'),c,h('label',{},'Tracking number'),t],'Save',function(){
+return setSt(o,{delivery_status:'shipped',courier:c.value.trim()||null,tracking_no:t.value.trim()||null,shipped_at:new Date().toISOString(),delivered_at:null,returned_at:null,return_reason:null})})}
+function doneDlg(o,cod){
+var k=h('input',{type:'checkbox',checked:''});
+dlgOf('Delivered \u00B7 '+o.order_no,[cod?h('label',{style:'display:flex;gap:8px;align-items:center'},k,'Cash collected, mark as paid (\u09f3'+o.total+')'):h('small',{},'Mark this order as delivered.')],'Delivered',function(){
+var patch={delivery_status:'delivered',delivered_at:new Date().toISOString()};
+if(cod&&k.checked)patch.payment_status='paid';
+return setSt(o,patch)})}
+function retDlg(o){
+var r=h('select',{},['Customer refused','Wrong size','Damaged','Not reachable','Other'].map(function(x){return h('option',{value:x},x)})),n=h('input',{placeholder:'Optional'});
+dlgOf('Returned \u00B7 '+o.order_no,[h('label',{},'Reason'),r,h('label',{},'Note'),n,h('small',{},'Stock is not changed. Add resellable items back in Products.')],'Save return',function(){
+return setSt(o,{delivery_status:'returned',returned_at:new Date().toISOString(),return_reason:r.value+(n.value.trim()?': '+n.value.trim():'')})})}
+})();
   tab('dash');
 var _n=0,_t=setInterval(function(){_n++;var on=!$('#t-dash').hidden;if(on)paintExtras();if(sb&&BIZ){clearInterval(_t);if(on)kpis()}else if(_n>60)clearInterval(_t)},500);
 
