@@ -1020,7 +1020,6 @@ card('TOTAL SALES',tk(k.sales),dl(k.sales,p.sales))
 +card('ORDERS',Number(k.orders||0).toLocaleString('en-IN'),dl(k.orders,p.orders))
 +card('AVG ORDER VALUE',tk(k.aov),dl(k.aov,p.aov))
 +card('PROFIT',tk(k.profit),dl(k.profit,p.profit)+warn)
-+card('RETURN RATE','\u2013','<span class="ovd">returns are not recorded yet</span>')
 +card('AI DRAFT CONVERSION',k.ai_conversion==null?'\u2013':k.ai_conversion+'%','<span class="ovd">AI-assisted '+
 'orders per chat with an AI reply</span>');
 fill($('#ovc'),(d.filters||{}).categories,'All categories');
@@ -1195,7 +1194,6 @@ return c?Array.prototype.indexOf.call(box.children,c):-1}
 $('#ovk').addEventListener('click',function(e){var i=idx(this,e);if(i<0)return;
 var m=[{kind:'all',title:'Total sales'},{kind:'all',title:'Orders'},{kind:'all',title:'Average order value',mode:'aov'},
 {kind:'all',title:'Profit',mode:'profit'},
-{title:'Return rate',note:'Returns are not recorded yet. Once orders can be marked as returned, this card will list them.'},
 {kind:'ai',title:'AI-assisted orders'}][i];if(m)openDw(m)});
 $('#ovlg').addEventListener('click',function(e){var i=idx(this,e),x=((window.OVD||{}).categories||[])[i];
 if(x)openDw({kind:'category',key:x.category,title:x.category})});
@@ -1255,6 +1253,107 @@ NG.forEach(function(x){x.forEach(function(m){if(m[0]===s)g=x})});
 ngs.replaceChildren();ngs.style.display=g?'flex':'none';
 if(g){g.forEach(function(m){var b=document.createElement('button');b.className='rs-btn small'+(m[0]===s?' primary':'');b.textContent=m[1];b.addEventListener('click',function(){tab(m[0])});ngs.append(b)});
 document.querySelectorAll('[data-t="'+g[0][0]+'"]').forEach(function(b){b.classList.add('active')})}};
+/* ===== Overview sections: Delivery Tracker, Daily Cash, Customers, Stock & Reorder ===== */
+(function(){
+var DT_NAME='DELIVERY TRACKER',REORDER_TO=10,LATE_DAYS=3;
+if(!$('#ovm'))return;
+var css=document.createElement('style');
+css.textContent=['.ovx{display:grid;gap:12px;margin-top:12px;grid-template-columns:1fr 1fr}',
+'@media(max-width:900px){.ovx{grid-template-columns:1fr}}',
+'.xs{display:grid;grid-template-columns:repeat(auto-fit,minmax(54px,1fr));gap:6px;margin:8px 0}',
+'.xs div{border:1px solid var(--line);border-radius:12px;padding:8px 4px;text-align:center;font-size:10px;color:var(--muted)}',
+'.xs b{display:block;font-size:18px;color:#e9fff5}',
+'.xr{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #ffffff12;font-size:13px}',
+'.xr span{color:var(--muted)}.xr.p{cursor:pointer}',
+'.xbig{font-size:28px;font-weight:800;margin:4px 0 6px}.xbig.n{color:#fb7185}',
+'.xnote{font-size:11px;color:var(--muted);margin-top:8px}'].join('');
+document.head.appendChild(css);
+var box=document.createElement('div');box.className='ovx';box.id='ovx';
+box.innerHTML='<div class="rs-card p" data-sec="deliv" id="xd" style="cursor:pointer"></div><div class="rs-card p" data-sec="cash" id="xc"></div><div class="rs-card p" data-sec="cust" id="xu"></div><div class="rs-card p" data-sec="stock" id="xs"></div>';
+$('#ovm').before(box);
+var reTxt='';
+function T(n){return '\u09f3'+Math.round(Number(n)||0).toLocaleString('en-IN')}
+function E(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function sum(a,k){return (a||[]).reduce(function(s,x){return s+(Number(x[k])||0)},0)}
+function head(t){return '<div class="ovh">'+t+'</div>'}
+function row(a,b){return '<div class="xr"><span>'+a+'</span><b>'+b+'</b></div>'}
+function span(){var b=document.querySelector('#ovr button.on'),g=b?b.dataset.g:'30',t=new Date();t.setHours(0,0,0,0);
+var to=new Date(t);to.setDate(to.getDate()+1);var f=new Date(t);
+if(g==='month')f.setDate(1);else if(g!=='today')f.setDate(f.getDate()-(Number(g)-1));
+return{f:f.toISOString(),to:to.toISOString(),t:t,tn:to}}
+async function paintDeliv(sp){var el=$('#xd');
+var r=await sb.from('umb_orders').select('id,delivery_status,created_at').eq('business_id',BIZ).eq('status','confirmed').gte('created_at',sp.f).lt('created_at',sp.to).limit(2000);
+if(r.error){el.innerHTML=head(DT_NAME)+'<div class="ovn">Run the delivery SQL first ('+E(r.error.message)+')</div>';return}
+var c={pending:0,shipped:0,delivered:0,returned:0,failed:0},late=0,now=Date.now();
+r.data.forEach(function(o){var s=o.delivery_status||'pending';if(c[s]==null)s='pending';c[s]++;
+if((s==='pending'||s==='shipped')&&now-new Date(o.created_at).getTime()>LATE_DAYS*864e5)late++});
+var done=c.delivered+c.returned,rr=done?Math.round(c.returned/done*1000)/10:null;
+el.innerHTML=head(DT_NAME)+'<div class="rs-sub">RETURN RATE</div><div class="xbig'+(rr>0?' n':'')+'">'+(rr==null?'\u2013':rr+'%')+'</div>'
++'<div class="xs"><div><b>'+c.pending+'</b>Pending</div><div><b>'+c.shipped+'</b>On the way</div><div><b>'+c.delivered+'</b>Delivered</div><div><b>'+c.returned+'</b>Returned</div><div><b>'+c.failed+'</b>Failed</div></div>'
++(late?row('Waiting more than '+LATE_DAYS+' days','<span style="color:#fbbf24">'+late+'</span>'):'')
++'<div class="xnote">'+(rr==null?'Return rate shows once an order is delivered or returned.':'Returned orders out of delivered and returned orders.')+'</div>'}
+async function paintCash(sp){var el=$('#xc');
+var R=await Promise.all([
+sb.from('umb_orders').select('total').eq('business_id',BIZ).eq('status','confirmed').eq('payment_status','paid').gte('paid_at',sp.t.toISOString()).lt('paid_at',sp.tn.toISOString()),
+sb.from('umb_orders').select('total').eq('business_id',BIZ).eq('status','confirmed').or('payment_status.is.null,payment_status.neq.paid'),
+sb.from('umb_expenses').select('amount').eq('business_id',BIZ).eq('spent_on',ymd(sp.t))]);
+var bad=R.filter(function(x){return x.error})[0];
+if(bad){el.innerHTML=head('DAILY CASH')+'<div class="ovn">Run the cash SQL first ('+E(bad.error.message)+')</div>';return}
+var paid=sum(R[0].data,'total'),due=sum(R[1].data,'total'),spent=sum(R[2].data,'amount'),net=paid-spent;
+el.innerHTML=head('DAILY CASH \u00B7 TODAY')+'<div class="rs-sub">NET TODAY</div><div class="xbig'+(net<0?' n':'')+'">'+(net<0?'-':'')+T(Math.abs(net))+'</div>'
++row('Paid today','+'+T(paid))+row('Expenses today','-'+T(spent))
++row('Still to collect ('+R[1].data.length+' order'+(R[1].data.length===1?'':'s')+')',T(due))
++'<p class="ac" style="margin-top:10px"><button class="gh" id="xadd">+ Add expense</button></p>'}
+async function paintCust(sp){var el=$('#xu');
+var R=await Promise.all([
+sb.from('umb_orders').select('customer_id,customer_name,conversation_id,total').eq('business_id',BIZ).eq('status','confirmed').gte('created_at',sp.f).lt('created_at',sp.to).limit(2000),
+sb.from('umb_orders').select('customer_id,customer_name').eq('business_id',BIZ).eq('status','confirmed').limit(5000),
+sb.from('umb_customers').select('id',{count:'exact',head:true}).eq('business_id',BIZ).gte('created_at',sp.f).lt('created_at',sp.to)]);
+var bad=R[0].error||R[1].error;
+if(bad){el.innerHTML=head('CUSTOMERS')+'<div class="ovn">Could not load ('+E(bad.message)+')</div>';return}
+var all={},by={};
+R[1].data.forEach(function(o){var k=o.customer_id||o.customer_name;all[k]=(all[k]||0)+1});
+R[0].data.forEach(function(o){var k=o.customer_id||o.customer_name,x=by[k]=by[k]||{n:o.customer_name,cv:o.conversation_id,s:0};x.s+=Number(o.total)||0;if(!x.cv)x.cv=o.conversation_id});
+var ks=Object.keys(by),rep=ks.filter(function(k){return all[k]>=2}).length;
+var top=ks.map(function(k){return by[k]}).sort(function(a,b){return b.s-a.s}).slice(0,3);
+el.innerHTML=head('CUSTOMERS')+'<div class="xs"><div><b>'+(R[2].count==null?'\u2013':R[2].count)+'</b>New chats</div><div><b>'+ks.length+'</b>Buyers</div><div><b>'+rep+'</b>Repeat</div></div>'
++'<div class="rs-sub" style="margin-top:6px">TOP CUSTOMERS</div>'
++(top.length?top.map(function(x){return '<div class="xr p"'+(x.cv?' data-conv="'+E(x.cv)+'"':'')+'><span>'+E(x.n)+'</span><b>'+T(x.s)+'</b></div>'}).join(''):'<div class="ovn">No orders in this period</div>')}
+function paintStock(){var el=$('#xs');if(!el)return;
+if(!sb){el.innerHTML=head('STOCK &amp; REORDER')+'<div class="ovn">Connect to see stock</div>';return}
+var out=[],low=[],cost=0,worth=0;
+PR.forEach(function(p){if(p.active===false)return;(p.v||[]).forEach(function(v){var q=Number(v.q)||0;cost+=q*(p.cost_price||0);worth+=q*(p.price||0);
+var it={n:p.name+(v.z?' '+v.z:'')+(v.c?' / '+v.c:''),q:q};if(q<=0)out.push(it);else if(q<=LOW)low.push(it)})});
+var need=out.concat(low);
+reTxt=need.map(function(x){return x.n+': have '+x.q+', order '+(REORDER_TO-x.q)}).join('\n');
+el.innerHTML=head('STOCK &amp; REORDER')+'<div class="xs"><div><b>'+out.length+'</b>Out</div><div><b>'+low.length+'</b>Low</div></div>'
++(need.length?need.slice(0,6).map(function(x){return row(E(x.n),x.q>0?x.q+' left':'<span style="color:#fb7185">out</span>')}).join('')
++(need.length>6?'<div class="xnote">and '+(need.length-6)+' more</div>':'')
++'<p class="ac" style="margin-top:10px"><button class="gh" id="xcp">Copy reorder list</button></p>':'<div class="ovn">Nothing to reorder</div>')
++row('Stock worth (cost)',T(cost))+row('Stock worth (price)',T(worth))}
+function addExp(){
+var a=h('input',{type:'number',min:'1',inputmode:'decimal',placeholder:'Amount'}),n=h('input',{placeholder:'For example rent, courier, ads'}),
+dt=h('input',{type:'date',value:ymd(new Date())}),dlg=h('dialog',{}),sv=h('button',{class:'pri'},'Save');
+sv.addEventListener('click',async function(){var v=Number(a.value);if(!(v>0)){err('Enter an amount');return}
+sv.disabled=true;
+var r=await sb.from('umb_expenses').insert({business_id:BIZ,spent_on:dt.value||ymd(new Date()),amount:v,note:n.value.trim()||null,created_by:UID});
+if(r.error){err(r.error);sv.disabled=false;return}
+dlg.close();dlg.remove();paintCash(span()).catch(function(){})});
+dlg.append(h('b',{},'Add expense'),h('label',{},'Amount (\u09f3)'),a,h('label',{},'Note'),n,h('label',{},'Date'),dt,
+h('p',{class:'ac'},h('button',{class:'gh',onclick:function(){dlg.close();dlg.remove()}},'Cancel'),sv));
+document.body.append(dlg);dlg.showModal()}
+box.addEventListener('click',function(e){
+if(e.target.closest('#xadd')){addExp();return}
+var cp=e.target.closest('#xcp');
+if(cp){try{navigator.clipboard.writeText(reTxt).then(function(){cp.textContent='Copied'},function(){cp.textContent='Not allowed here'})}catch(x){cp.textContent='Not allowed here'}return}
+var r=e.target.closest('[data-conv]');if(r){if(window.openConv)window.openConv(r.dataset.conv);return}
+if(e.target.closest('#xd'))tab(window.DELIV_TAB||'ord')});
+function run(){if(!sb||!BIZ)return;var sp=span();paintStock();
+[['#xd',paintDeliv],['#xc',paintCash],['#xu',paintCust]].forEach(function(p){p[1](sp).catch(function(e){$(p[0]).innerHTML=head('ERROR')+'<div class="ovn">'+E((e&&e.message)||e)+'</div>'})})}
+document.addEventListener('ovpaint',run);
+var _pe=paintExtras;paintExtras=function(){_pe.apply(this,arguments);paintStock()};
+})();  
   tab('dash');
 var _n=0,_t=setInterval(function(){_n++;var on=!$('#t-dash').hidden;if(on)paintExtras();if(sb&&BIZ){clearInterval(_t);if(on)kpis()}else if(_n>60)clearInterval(_t)},500);
 
