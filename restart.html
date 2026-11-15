@@ -1650,6 +1650,51 @@ document.addEventListener('pointerup',fin,true);
 document.addEventListener('pointercancel',function(){if(D&&D.on){block=Date.now()+300}cleanup()},true);
 ['click','mouseup','touchend','mousedown'].forEach(function(n){document.addEventListener(n,function(e){if(Date.now()<block||(D&&D.on)){e.stopPropagation();e.preventDefault()}},true)})
 })();
+  /* ===== Insights page (AI analysis of sales totals, via Edge Function umb-insights) ===== */
+(function(){
+var IR='30',TK=0,KEYT='soon:Reports & Insights';
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function ago(t){var m=Math.round((Date.now()-new Date(t).getTime())/6e4);return m<1?'just now':m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago'}
+var sec=document.createElement('section');sec.id='t-ins';sec.hidden=true;
+sec.innerHTML='<div class="ovr" id="inr" style="margin:6px 0 12px"></div><div id="inb"></div>';
+$('#t-soon').after(sec);
+function chips(){var r=$('#inr');r.replaceChildren();
+[['today','Today'],['7','7 days'],['30','30 days'],['month','This month'],['90','90 days']].forEach(function(x){
+var b=document.createElement('button');b.className='rs-btn small'+(x[0]===IR?' primary':'');b.textContent=x[1];
+b.addEventListener('click',function(){IR=x[0];chips();load()});r.append(b)})}
+function list(title,col,arr){if(!arr||!arr.length)return '';
+return '<div style="margin-top:14px"><div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:'+col+'">'+title+'</div>'+
+arr.map(function(t){return '<div style="margin-top:7px;padding:9px 11px;border-radius:10px;border:1px solid '+col+'44;background:'+col+'12;font-size:13px;line-height:1.45">'+esc(t)+'</div>'}).join('')+'</div>'}
+function card(res,meta){var b=$('#inb');
+if(!res){b.innerHTML='<div class="card" style="max-width:none"><b>No analysis saved for this period yet.</b><br><small style="color:var(--muted)">The AI reads only your sales totals (no customer names, phones or chats).</small>'+
+'<div style="margin-top:12px"><button class="rs-btn primary" id="ina">Analyse</button></div><div id="ine"></div></div>';$('#ina').addEventListener('click',function(){ask(false)});return}
+b.innerHTML='<div class="card" style="max-width:none"><div style="font-size:18px;font-weight:700;line-height:1.35">'+esc(res.headline)+'</div>'+
+list('WINS','#19f39b',res.wins)+list('RISKS','#fbbf24',res.risks)+list('NEXT ACTIONS','#60a5fa',res.actions)+
+'<div style="margin-top:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="rs-btn small" id="ina">Refresh</button>'+
+'<small style="color:var(--muted)">'+(meta&&meta.at?'Saved '+ago(meta.at)+' \u00B7 ':'')+(meta&&meta.model?esc(meta.model)+' \u00B7 ':'')+'totals only</small></div><div id="ine"></div></div>';
+$('#ina').addEventListener('click',function(){ask(true)})}
+async function load(){var my=++TK,b=$('#inb');b.innerHTML='<div class="card" style="max-width:none"><small style="color:var(--muted)">Loading...</small></div>';
+try{var r=await sb.from('umb_insights_cache').select('result,model,created_at').eq('range_key',IR).limit(1);
+if(my!==TK)return;if(r.error)throw r.error;var c=r.data&&r.data[0];
+card(c?c.result:null,c?{at:c.created_at,model:c.model}:null)}
+catch(e){if(my===TK)b.innerHTML='<div class="card" style="max-width:none">Could not load: '+esc((e&&e.message)||e)+'</div>'}}
+async function ask(force){var my=++TK,btn=$('#ina'),er=$('#ine');
+if(btn){btn.disabled=true;btn.textContent='Analysing...'}if(er)er.innerHTML='';
+try{var r=await sb.functions.invoke('umb-insights',{body:{range:IR,force:force}});
+if(my!==TK)return;
+if(r.error){var m=r.error.message;try{var j=await r.error.context.json();if(j&&j.error)m=j.error}catch(x){}throw new Error(m)}
+var d=r.data||{};if(d.error)throw new Error(d.error);
+card({headline:d.headline,wins:d.wins,risks:d.risks,actions:d.actions},{at:d.at,model:d.model});
+if(force&&d.cached){var e2=$('#ine');if(e2)e2.innerHTML='<div class="dwn" style="margin-top:10px;color:var(--muted)">This is still the latest result. A new analysis can run again in about 10 minutes.</div>'}}
+catch(e){if(my!==TK)return;var b2=$('#ina');if(b2){b2.disabled=false;b2.textContent=force?'Refresh':'Analyse'}
+var e3=$('#ine');if(e3)e3.innerHTML='<div style="margin-top:10px;color:#fb7185;font-size:13px">'+esc((e&&e.message)||e)+'</div>'}}
+var _t8=tab;
+tab=function(t){var s=$('#t-ins');
+if(t===KEYT){_t8(t);var so=$('#t-soon');if(so)so.hidden=true;s.hidden=false;$('#pt').textContent='Insights';chips();load();return}
+s.hidden=true;_t8(t)};
+var anchor=document.querySelector('#ov .mvhint')||document.getElementById('ovm');
+if(anchor&&!document.getElementById('insgo'))anchor.insertAdjacentHTML('beforebegin','<div id="insgo" style="grid-column:1/-1;margin-top:6px"><button class="rs-btn" data-go="soon:Reports & Insights" style="width:100%">\u2733 AI Insights - analyse my sales</button></div>');
+})();
   tab('dash');
 var _n=0,_t=setInterval(function(){_n++;var on=!$('#t-dash').hidden;if(on)paintExtras();if(sb&&BIZ){clearInterval(_t);if(on)kpis()}else if(_n>60)clearInterval(_t)},500);
 
