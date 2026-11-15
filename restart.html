@@ -1428,6 +1428,50 @@ var r=h('select',{},['Customer refused','Wrong size','Damaged','Not reachable','
 dlgOf('Returned \u00B7 '+o.order_no,[h('label',{},'Reason'),r,h('label',{},'Note'),n,h('small',{},'Stock is not changed. Add resellable items back in Products.')],'Save return',function(){
 return setSt(o,{delivery_status:'returned',returned_at:new Date().toISOString(),return_reason:r.value+(n.value.trim()?': '+n.value.trim():'')})})}
 })();
+  /* ===== Courier add-on: Send to Steadfast, Refresh status, auto-sync when Deliveries opens ===== */
+(function(){
+var last=0,busy=false;
+function lbl(s){return String(s||'').replace(/_/g,' ')}
+async function callC(body){
+var r=await sb.functions.invoke('umb-courier',{body:body}),d=r.data;
+if(r.error&&r.error.context&&r.error.context.json){try{d=await r.error.context.json()}catch(x){}}
+if(d&&d.error)throw new Error(d.error);
+if(r.error)throw new Error(r.error.message||'courier call failed');
+return d||{}}
+function reload(){document.dispatchEvent(new Event('ovpaint'));if(!$('#t-deliv').hidden)tab('deliv')}
+async function syncSF(manual){
+if(busy||!sb)return;busy=true;last=Date.now();
+var b=$('#dvr');if(manual&&b){b.disabled=true;b.textContent='Checking...'}
+try{var d=await callC({action:'sync'});
+if(manual){$('#st').style.borderColor='';$('#st').textContent='Checked '+d.checked+' Steadfast order'+(d.checked===1?'':'s')+', '+d.updated+' changed.'+(d.errors&&d.errors.length?' '+d.errors.length+' could not be checked.':'')}
+if(d.updated)reload()}
+catch(e){if(manual)err(e)}
+busy=false;var b2=$('#dvr');if(b2){b2.disabled=false;b2.textContent='Refresh status'}}
+function sendDlg(oid,no,cod){
+var dlg,sv=h('button',{class:'pri'},'Send to Steadfast');
+sv.addEventListener('click',async function(){sv.disabled=true;sv.textContent='Sending...';
+try{var d=await callC({action:'book',order_id:oid});
+dlg.close();dlg.remove();$('#st').style.borderColor='';$('#st').textContent='Sent to Steadfast. Tracking code: '+d.tracking_code;reload()}
+catch(e){err(e);sv.disabled=false;sv.textContent='Send to Steadfast'}});
+dlg=h('dialog',{},h('b',{},'Send to Steadfast \u00B7 '+no),
+h('p',{},h('small',{},cod?'Steadfast will collect \u09f3'+cod+' from the customer.':'Already paid, nothing to collect.')),
+h('small',{},"The parcel is booked with this order's name, phone, address and items."),
+h('p',{class:'ac'},h('button',{class:'gh',onclick:function(){dlg.close();dlg.remove()}},'Cancel'),sv));
+document.body.append(dlg);dlg.showModal()}
+function deco(){
+var f=$('#dvf');
+if(f&&f.children.length&&!$('#dvr')){var rb=h('button',{id:'dvr',style:'margin-left:auto'},'Refresh status');
+rb.addEventListener('click',function(e){e.stopPropagation();syncSF(true)});f.append(rb)}
+var open=0;
+document.querySelectorAll('#dvl .card[data-oid]:not([data-dec])').forEach(function(c){c.dataset.dec='1';
+var st=c.dataset.st,no=((c.querySelector('b')||{}).textContent||'').split(' \u00B7 ')[0],ac=c.querySelector('.ac');
+if(c.dataset.cs){var p=h('p',{},h('small',{},'Courier status: '+lbl(c.dataset.cs)));if(ac)ac.before(p);else c.append(p)}
+if((st==='pending'||st==='failed')&&ac&&!c.dataset.cid){ac.prepend(h('button',{class:'pri',onclick:function(){sendDlg(c.dataset.oid,no,c.dataset.cod)}},'Send to Steadfast'))}});
+document.querySelectorAll('#dvl .card[data-oid]').forEach(function(c){if(c.dataset.st==='shipped'&&/steadfast/i.test(c.dataset.cour||''))open++});
+if(open&&!busy&&Date.now()-last>120000)syncSF(false)}
+var mo=new MutationObserver(function(){deco()});
+mo.observe($('#dvl'),{childList:true});mo.observe($('#dvf'),{childList:true});
+})();
   tab('dash');
 var _n=0,_t=setInterval(function(){_n++;var on=!$('#t-dash').hidden;if(on)paintExtras();if(sb&&BIZ){clearInterval(_t);if(on)kpis()}else if(_n>60)clearInterval(_t)},500);
 
