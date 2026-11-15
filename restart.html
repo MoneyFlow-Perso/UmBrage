@@ -219,19 +219,26 @@ input[type=checkbox]{accent-color:#19f39b}
 <div class="app">
 <aside class="sidebar">
   <div class="brand"><div class="logo">U</div><div><strong>UmBrage</strong><small>BRAND SALES AGENT · AI</small></div></div>
-  <div class="navlabel">COMMAND CENTER</div>
+    <div class="navlabel">OVERVIEW</div>
   <nav class="nav"><button data-t="dash" class="active"><span class="ico">⌂</span> Overview</button></nav>
-  <div class="navlabel">AI AGENT</div>
+  <div class="navlabel">SALES &amp; ANALYTICS</div>
+  <nav class="nav">
+    <button data-t="prod"><span class="ico">▦</span> Products</button>
+    <button data-t="crm:leads"><span class="ico">♧</span> Leads &amp; Customers</button>
+    <button data-t="crm:orders"><span class="ico">♧</span> CRM Orders</button>
+    <button data-t="crm:followups"><span class="ico">♧</span> Follow-ups</button>
+    <button data-t="crm:products"><span class="ico">♧</span> CRM Products</button>
+    <button data-t="camp"><span class="ico">◈</span> Marketing</button>
+    <button data-t="crm:automation"><span class="ico">⚙</span> Automation Center</button>
+    <button data-t="soon:Social Hub"><span class="ico">⌯</span> Social Hub</button>
+  </nav>
+  <div class="navlabel">AI</div>
   <nav class="nav" aria-label="Sections">
     <button data-t="inbox"><span class="ico">✉</span> AI Reply Drafts</button>
-    <button data-t="camp"><span class="ico">⌕</span> Campaign Copy</button>
-    <button data-t="prod"><span class="ico">▦</span> Products</button>
-    <button data-t="learn"><span class="ico">✎</span> Learning</button>
-    <button data-t="test"><span class="ico">✓</span> Test set</button>
+    <button data-t="learn"><span class="ico">✎</span> AI Training</button>
+    <button data-t="soon:Reports & Insights"><span class="ico">✳</span> Insights</button>
   </nav>
-  <div class="navlabel">CRM &amp; BUSINESS</div>
-  <nav class="nav"><button data-t="crm:analytics"><span class="ico">▥</span> Sales Analytics</button><button data-t="crm:overview"><span class="ico">♧</span> CRM Overview</button><button data-t="crm:leads"><span class="ico">♧</span> Leads &amp; Customers</button><button data-t="crm:orders"><span class="ico">♧</span> CRM Orders</button><button data-t="crm:followups"><span class="ico">♧</span> Follow-ups</button><button data-t="crm:products"><span class="ico">♧</span> CRM Products</button><button data-t="crm:marketing"><span class="ico">◈</span> Marketing Hub</button><button data-t="crm:automation"><span class="ico">⚙</span> Automation Center</button><button data-t="soon:Social Hub"><span class="ico">⌯</span> Social Hub</button><button data-t="soon:AI Intelligence"><span class="ico">✳</span> AI Intelligence</button><button data-t="soon:Reports & Insights"><span class="ico">◴</span> Reports &amp; Insights</button></nav>
-  <div class="navlabel">SYSTEM</div>
+  <div class="navlabel">SETTINGS</div>
   <nav class="nav"><button data-t="set"><span class="ico">⚙</span> Settings &amp; Data</button></nav>
   <div class="sidefoot" id="sf">LOCAL DEMO STORAGE<br><span style="color:var(--green)">●</span> This device</div>
 </aside>
@@ -312,11 +319,10 @@ input[type=checkbox]{accent-color:#19f39b}
 <nav class="mobilebar" aria-label="Sections">
   <button data-t="dash" class="active"><span>⌂</span>Overview</button>
   <button data-t="inbox"><span>✉</span>Replies</button>
-  <button data-t="camp"><span>⌕</span>Campaigns</button>
   <button data-t="prod"><span>▦</span>Products</button>
-  <button data-t="learn"><span>✎</span>Learn</button>
-  <button data-t="test"><span>✓</span>Tests</button>
-  <button data-t="crm:overview"><span>♧</span>CRM</button>
+  <button data-t="camp"><span>◈</span>Marketing</button>
+  <button data-t="learn"><span>✎</span>Training</button>
+  <button data-t="crm:leads"><span>♧</span>CRM</button>
   <button data-t="set"><span>⚙</span>Settings</button>
 </nav>
 
@@ -916,7 +922,7 @@ q('umb_conversations',function(x){return x.eq('status','open').eq('needs_human',
 function paintBanner(){var o=$('#dbn');if(!o)return;var nm=CO.name||'Your company',lg=h('div',{style:'width:50px;height:50px;border-radius:13px;background:#19f39b;color:#032016;display:grid;place-items:center;font-weight:900;font-size:22px;overflow:hidden;flex:none'},CO.logo?h('img',{src:CO.logo,alt:'',style:'width:100%;height:100%;object-fit:contain'}):(nm[0]||'U').toUpperCase());
 var ed=h('button',{class:'rs-btn small',style:'margin-left:auto'},'Edit profile');
 ed.addEventListener('click',function(){tab('set');setTimeout(function(){var e=$('#cocard');if(e)e.scrollIntoView({behavior:'smooth',block:'start'})},80)});
-o.replaceChildren(lg,h('div',{},h('b',{style:'font-size:19px;display:block'},nm),h('small',{style:'opacity:.7;font-style:italic'},CO.motto||(CO.name?'':'Add your name, logo and motto in Settings'))),ed)}
+o.replaceChildren(lg,h('div',{},h('b',{style:'font-size:19px;display:block'},nm),h('small',{style:'opacity:.7;font-style:italic'},CO.motto||(CO.name?'':'Add your name, logo and motto in Settings'))))}
 
 var LOW=3;
 function paintExtras(){var p=$('#dpl'),s=$('#dls');if(!p||!s)return;
@@ -1234,7 +1240,22 @@ else if(k==='soon'){$('#pt').textContent=s.slice(5);$('#sn').textContent=s.slice
 else{$('#pt').textContent='CRM / '+(CRMT[s.slice(4)]||s.slice(4));crmOpen(s.slice(4))}};
 document.addEventListener('click',function(e){var c=e.target.closest('[data-go]');if(c)tab(c.dataset.go)});
 var _t4=tab;tab=function(t){_t4(t);var e=document.querySelector('main section[id^="t-"]:not([hidden])');if(e){e.classList.remove('rs-page');void e.offsetWidth;e.classList.add('rs-page')}};
-tab('dash');
+/* ===== Grouped navigation (4 groups; merged pages get a tab strip) ===== */
+var NG=[
+ [['dash','Dashboard'],['crm:analytics','Sales Analytics'],['crm:overview','CRM Overview']],
+ [['camp','Campaign Copy'],['crm:marketing','Marketing Hub']],
+ [['learn','Learning'],['test','Test set']],
+ [['soon:Reports & Insights','Reports & Insights'],['soon:AI Intelligence','AI Intelligence']]
+];
+var ngs=document.createElement('div');ngs.id='ngs';ngs.style.cssText='gap:8px;flex-wrap:wrap;margin:14px 0 4px;display:none';
+document.querySelector('.topbar').after(ngs);
+var _t5=tab;
+tab=function(t){_t5(t);var s=String(t),g=null;
+NG.forEach(function(x){x.forEach(function(m){if(m[0]===s)g=x})});
+ngs.replaceChildren();ngs.style.display=g?'flex':'none';
+if(g){g.forEach(function(m){var b=document.createElement('button');b.className='rs-btn small'+(m[0]===s?' primary':'');b.textContent=m[1];b.addEventListener('click',function(){tab(m[0])});ngs.append(b)});
+document.querySelectorAll('[data-t="'+g[0][0]+'"]').forEach(function(b){b.classList.add('active')})}};
+  tab('dash');
 var _n=0,_t=setInterval(function(){_n++;var on=!$('#t-dash').hidden;if(on)paintExtras();if(sb&&BIZ){clearInterval(_t);if(on)kpis()}else if(_n>60)clearInterval(_t)},500);
 
 })();
