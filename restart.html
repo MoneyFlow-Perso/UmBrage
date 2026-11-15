@@ -1163,18 +1163,100 @@ return '<div class="dwo"><div class="r"><b>'+esc(x.order_no||'Order')+'</b><b>'+
 +(x.ai?'<span class="dwc ok">AI-assisted</span>':'')
 +(mode==='profit'?'<span class="dwc">sale '+tk(x.total)+'</span>':'')+'</div>'
 +(x.conversation_id?'<div class="a"><button data-chat="'+esc(x.conversation_id)+'">Open chat</button></div>':'')+'</div>'}
-function body(d,o){var s=d.summary||{},list=d.orders||[],h='';
-var avg=s.count>0?s.sales/s.count:0;
-if(o.mode==='profit')h+='<div class="dwg">'+tile('Revenue after discount',tk(s.net))+tile('Cost of goods',tk(s.cost))
-+tile('Profit',tk(s.profit))+tile('Discounts given',tk(s.discount))+'</div>';
-else if(o.mode==='aov')h+='<div class="dwg">'+tile('Orders',s.count)+tile('Sales',tk(s.sales))
-+tile('Average order',tk(avg))+tile('Delivery charges',tk(s.delivery))+'</div>';
-else h+='<div class="dwg">'+tile('Orders',s.count)+tile('Sales',tk(s.sales))
-+tile('Profit',tk(s.profit))+tile('Delivery charges',tk(s.delivery))+'</div>';
-if(s.count>0&&Number(s.cost)===0)h+='<div class="dwn" style="color:#fbbf24">No cost prices are recorded on these orders, '+
-'so profit equals revenue.</div>';
-h+=list.length?list.map(function(x){return row(x,o.mode)}).join(''):'<div class="dwn">No orders match this.</div>';
-if(s.count>list.length)h+='<div class="dwn">Showing the latest '+list.length+' of '+s.count+' orders.</div>';
+function agg(list,fn,val){var m={};list.forEach(function(x){var q=fn(x);if(q==null||q==='')return;m[q]=(m[q]||0)+(val?val(x):1)});
+return Object.keys(m).map(function(a){return[a,m[a]]}).sort(function(a,b){return b[1]-a[1]})}
+function sec(t){return '<div class="dwsub" style="letter-spacing:.08em;margin:6px 0 -4px;font-weight:700">'+t+'</div>'}
+function bars(a,fmt){if(!a.length)return '';var mx=Math.max.apply(null,a.map(function(r){return r[1]}).concat([1]));
+return '<div class="dwo">'+a.map(function(r){return '<div class="r"><span class="m">'+esc(r[0])+'</span><b style="font-size:13px">'+
+(fmt?fmt(r[1]):r[1])+'</b></div><div style="height:6px;border-radius:6px;background:#ffffff10"><div style="height:6px;border-radius:6px;width:'+
+Math.max(3,Math.round(r[1]/mx*100))+'%;background:linear-gradient(90deg,#19f39b,#19f39b66)"></div></div>'}).join('')+'</div>'}
+function note(t,c){return '<div class="dwn"'+(c?' style="color:'+c+'"':'')+'>'+t+'</div>'}
+function itemsOf(list,name){var o=[];list.forEach(function(x){(x.items||[]).forEach(function(i){if(!name||i.name===name)o.push(i)})});return o}
+function units(its){return its.reduce(function(s,i){return s+(Number(i.qty)||0)},0)}
+function aggI(its,fn){var m={};its.forEach(function(i){var q=fn(i);if(!q)return;m[q]=(m[q]||0)+(Number(i.qty)||0)});
+return Object.keys(m).map(function(a){return[a,m[a]]}).sort(function(a,b){return b[1]-a[1]})}
+var WD=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+function dpart(h){return h<6?'Night (12-6am)':h<12?'Morning (6-12)':h<17?'Afternoon (12-5pm)':h<22?'Evening (5-10pm)':'Night (10pm-12)'}
+function days(x){return Math.max(0,Math.floor((Date.now()-new Date(x.at).getTime())/864e5))}
+function uniq(list,fn){var m={};list.forEach(function(x){var q=fn(x);if(q)m[q]=1});return Object.keys(m).length}
+function repeat(list){var m={};list.forEach(function(x){var q=x.customer;if(q)m[q]=(m[q]||0)+1});
+return Object.keys(m).filter(function(k){return m[k]>1}).length}
+function body(d,o){var s=d.summary||{},list=d.orders||[],h='',n=list.length,k=o.mode||o.kind;
+var avg=s.count>0?s.sales/s.count:0,tot=function(x){return Number(x.total)||0};
+var paidSum=0,unpaidSum=0,paidN=0,unpaidN=0;
+list.forEach(function(x){if(x.paid==='paid'){paidSum+=tot(x);paidN++}else{unpaidSum+=tot(x);unpaidN++}});
+var payBars=bars([['Paid',paidSum],['Not paid yet',unpaidSum]],tk);
+var lst=list,lmode=o.mode==='profit'?'profit':'';
+if(k==='sales'){
+h+='<div class="dwg">'+tile('Total sales',tk(s.sales))+tile('Orders',s.count)+tile('Delivery charges',tk(s.delivery))+tile('Discounts given',tk(s.discount))+'</div>';
+h+=sec('MONEY IN')+payBars;
+h+=sec('BEST WEEKDAYS')+bars(agg(list,function(x){return WD[new Date(x.at).getDay()]},tot).slice(0,4),tk);
+h+=sec('WHERE SALES COME FROM')+bars(agg(list,function(x){return x.district},tot).slice(0,4),tk)}
+else if(k==='orders'){
+var cf=list.filter(function(x){return x.status==='confirmed'}).length;
+h+='<div class="dwg">'+tile('Orders',s.count)+tile('Confirmed',cf)+tile('Still draft',n-cf)+tile('Repeat buyers',repeat(list))+'</div>';
+h+=sec('ORDER STATUS')+bars([['Confirmed',cf],['Draft',n-cf]]);
+h+=sec('PAYMENT')+bars([['Paid',paidN],['Not paid yet',unpaidN]]);
+h+=sec('WHEN CUSTOMERS ORDER')+bars(agg(list,function(x){return dpart(new Date(x.at).getHours())}).slice(0,4))}
+else if(k==='aov'){
+var t=list.map(tot).sort(function(a,b){return a-b}),med=t.length?t[Math.floor(t.length/2)]:0;
+h+='<div class="dwg">'+tile('Average order',tk(avg))+tile('Middle order',tk(med))+tile('Largest',tk(t.length?t[t.length-1]:0))+tile('Smallest',tk(t.length?t[0]:0))+'</div>';
+var bk=[['Under \u09f3500',0],['\u09f3500-1,000',0],['\u09f31,000-2,000',0],['Over \u09f32,000',0]];
+t.forEach(function(v){bk[v<500?0:v<1000?1:v<2000?2:3][1]++});
+h+=sec('ORDER SIZE MIX')+bars(bk);
+h+=note('Items per order: '+(n?(units(itemsOf(list))/n).toFixed(1):'0')+' on average. Delivery charges add '+tk(s.delivery)+' on top.');
+lst=list.slice().sort(function(a,b){return tot(b)-tot(a)})}
+else if(k==='profit'){
+var mg=s.net>0?Math.round(s.profit/s.net*100):0,lowM=list.filter(function(x){return tot(x)>0&&(Number(x.profit)||0)/tot(x)<.15}).length;
+h+='<div class="dwg">'+tile('Profit',tk(s.profit))+tile('Margin',mg+'%')+tile('Revenue after discount',tk(s.net))+tile('Cost of goods',tk(s.cost))+'</div>';
+h+=sec('MONEY SPLIT')+bars([['Cost of goods',Number(s.cost)||0],['Profit',Number(s.profit)||0],['Discounts given',Number(s.discount)||0]],tk);
+if(s.count>0&&Number(s.cost)===0)h+=note('No cost prices are recorded on these orders, so profit equals revenue. Add a cost price on each product.','#fbbf24');
+else h+=note(lowM+' order'+(lowM===1?' has':'s have')+' a margin under 15% - worth a look.');
+lst=list.slice().sort(function(a,b){return (Number(b.profit)||0)-(Number(a.profit)||0)});
+h+=sec('MOST PROFITABLE FIRST')}
+else if(k==='ai'){
+h+='<div class="dwg">'+tile('AI-assisted orders',s.count)+tile('Sales',tk(s.sales))+tile('Average order',tk(avg))+tile('Profit',tk(s.profit))+'</div>';
+h+=sec('WHAT AI CHATS SELL')+bars(aggI(itemsOf(list),function(i){return i.name}).slice(0,5),function(v){return v+' pcs'});
+h+=sec('PAYMENT')+payBars}
+else if(k==='category'){
+var its=itemsOf(list);
+h+='<div class="dwg">'+tile('Orders',s.count)+tile('Sales',tk(s.sales))+tile('Pieces sold',units(its))+tile('Customers',uniq(list,function(x){return x.customer}))+'</div>';
+h+=sec('BEST SELLERS IN '+esc(String(o.title).toUpperCase()))+bars(aggI(its,function(i){return i.name}).slice(0,5),function(v){return v+' pcs'});
+h+=sec('SIZES')+bars(aggI(its,function(i){return i.size}).slice(0,5),function(v){return v+' pcs'});
+h+=sec('COLOURS')+bars(aggI(its,function(i){return i.color}).slice(0,5),function(v){return v+' pcs'})}
+else if(k==='district'){
+var ib=agg(list,function(x){return x.customer},tot);
+h+='<div class="dwg">'+tile('Orders',s.count)+tile('Sales',tk(s.sales))+tile('Customers',ib.length)+tile('Delivery charges',tk(s.delivery))+'</div>';
+h+=sec('BIGGEST BUYERS HERE')+bars(ib.slice(0,5),tk);
+h+=sec('WHAT THEY BUY')+bars(aggI(itemsOf(list),function(i){return i.name}).slice(0,4),function(v){return v+' pcs'});
+h+=note(unpaidN?'Waiting for payment: '+unpaidN+' order'+(unpaidN===1?'':'s')+' worth '+tk(unpaidSum)+'.':'Every order here is paid.',unpaidN?'#fbbf24':'')}
+else if(k==='product'){
+var pi=itemsOf(list,o.key),po=list.filter(function(x){return(x.items||[]).some(function(i){return i.name===o.key})});
+h+='<div class="dwg">'+tile('Pieces sold',units(pi))+tile('Orders with it',po.length)+tile('Customers',uniq(po,function(x){return x.customer}))+tile('Sales of those orders',tk(s.sales))+'</div>';
+h+=sec('SIZES')+bars(aggI(pi,function(i){return i.size}).slice(0,6),function(v){return v+' pcs'});
+h+=sec('COLOURS')+bars(aggI(pi,function(i){return i.color}).slice(0,6),function(v){return v+' pcs'});
+h+=sec('WHO BUYS IT')+bars(agg(po,function(x){return x.district}).slice(0,4),function(v){return v+' orders'});
+if(!pi.length)h+=note('No size or colour details are recorded for this product.')}
+else if(k==='day'){
+var hr=agg(list,function(x){var q=new Date(x.at).getHours();return (q%12||12)+(q<12?' am':' pm')}).slice(0,5);
+h+='<div class="dwg">'+tile('Orders',s.count)+tile('Sales',tk(s.sales))+tile('Pieces sold',units(itemsOf(list)))+tile('AI-assisted',list.filter(function(x){return x.ai}).length)+'</div>';
+h+=sec('BUSIEST HOURS')+bars(hr,function(v){return v+' orders'});
+h+=sec('WHO BOUGHT')+bars(agg(list,function(x){return x.customer},tot).slice(0,4),tk);
+h+=sec('PAYMENT')+payBars}
+else if(k==='draft'){
+lst=list.slice().sort(function(a,b){return new Date(a.at)-new Date(b.at)});
+var ag=lst.map(days),oldest=ag.length?ag[0]:0,avgAge=ag.length?(ag.reduce(function(a,b){return a+b},0)/ag.length).toFixed(1):0;
+h+='<div class="dwg">'+tile('Draft orders',s.count)+tile('Value waiting',tk(s.sales))+tile('Oldest waiting',oldest+' day'+(oldest===1?'':'s'))+tile('Average wait',avgAge+' days')+'</div>';
+h+=sec('WAITING LONGEST')+bars(lst.slice(0,5).map(function(x){return[(x.order_no||'Order')+' \u00B7 '+(x.customer||''),days(x)]}),function(v){return v+' d'});
+h+=note('Confirm a draft in the Orders tab to take its stock out, or cancel it if the customer went quiet.')}
+else if(k==='norcpt'){
+lst=list.slice().sort(function(a,b){return new Date(a.at)-new Date(b.at)});
+h+='<div class="dwg">'+tile('Without receipt',s.count)+tile('Value',tk(s.sales))+tile('Oldest',(lst.length?days(lst[0]):0)+' days')+tile('Customers',uniq(list,function(x){return x.customer}))+'</div>';
+h+=note('Open the order in the Orders tab and tap Receipt to create and share it.')}
+else{
+h+='<div class="dwg">'+tile('Orders',s.count)+tile('Sales',tk(s.sales))+tile('Profit',tk(s.profit))+tile('Delivery charges',tk(s.delivery))+'</div>'}
+h+=sec('ORDERS')+(lst.length?lst.map(function(x){return row(x,lmode)}).join(''):'<div class="dwn">No orders match this.</div>');
+if(s.count>list.length)h+='<div class="dwn">Charts and lists use the latest '+list.length+' of '+s.count+' orders; the tiles at the top cover all '+s.count+'.</div>';
 $('#dwb').innerHTML=h}
 async function openDw(o){var my=++DW.tok;
 $('#dwt').textContent=o.title;$('#dwsub').textContent=ptxt();show(true);
@@ -1193,7 +1275,7 @@ $('#dwb').addEventListener('click',function(e){var b=e.target.closest('[data-cha
 function idx(box,e){var c=e.target;while(c&&c.parentNode!==box)c=c.parentNode;
 return c?Array.prototype.indexOf.call(box.children,c):-1}
 $('#ovk').addEventListener('click',function(e){var i=idx(this,e);if(i<0)return;
-var m=[{kind:'all',title:'Total sales'},{kind:'all',title:'Orders'},{kind:'all',title:'Average order value',mode:'aov'},
+var m=[{kind:'all',mode:'sales',title:'Total sales'},{kind:'all',mode:'orders',title:'Orders'},{kind:'all',title:'Average order value',mode:'aov'},
 {kind:'all',title:'Profit',mode:'profit'},
 {kind:'ai',title:'AI-assisted orders'}][i];if(m)openDw(m)});
 $('#ovlg').addEventListener('click',function(e){var i=idx(this,e),x=((window.OVD||{}).categories||[])[i];
@@ -1471,6 +1553,103 @@ document.querySelectorAll('#dvl .card[data-oid]').forEach(function(c){if(c.datas
 if(open&&!busy&&Date.now()-last>120000)syncSF(false)}
 var mo=new MutationObserver(function(){deco()});
 mo.observe($('#dvl'),{childList:true});mo.observe($('#dvf'),{childList:true});
+})();
+  /* ===== Long-press to rearrange: Overview sections, side menu, phone bottom bar ===== */
+(function(){
+var ov=document.getElementById('ov'),sbar=document.querySelector('.sidebar'),mb=document.querySelector('.mobilebar'),KEY='umb:layout:v1',L={};
+try{L=JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){L={}}
+var css=document.createElement('style');
+css.textContent=['#ov:not([hidden]){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}',
+'#ov>*{min-width:0}',
+'#ov>.rs-eyebrow,#ov>.ovf,#ov>#ovk,#ov>.ovg,#ov>#ovm,#ov>.mvhint{grid-column:1/-1}',
+'#ov>.ovg,#ov>#ovk{margin-top:0}',
+'@media(max-width:900px){#ov:not([hidden]){grid-template-columns:1fr}}',
+'body.mvp,body.mvp *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}',
+'.mvsrc{opacity:.35!important}',
+'.mvghost{position:fixed;z-index:200;pointer-events:none;margin:0!important;padding:12px 16px;border-radius:14px;color:#eaffef;font-size:13px;font-weight:700;',
+'background:#0e1a15f2;border:1px solid #19f39b99;box-shadow:0 18px 50px #000a,0 0 24px #19f39b44;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+'.mvline{position:fixed;z-index:199;background:#19f39b;border-radius:3px;pointer-events:none;box-shadow:0 0 12px #19f39b}',
+'.mvhint{font-size:11px;color:var(--muted);text-align:center;margin:10px 0 4px}.mvhint a{color:var(--green);cursor:pointer;text-decoration:underline}'].join('');
+document.head.appendChild(css);
+if(ov){var ovx=document.getElementById('ovx'),ovm=document.getElementById('ovm');
+if(ovx){Array.prototype.slice.call(ovx.children).forEach(function(c){ov.insertBefore(c,ovm)});ovx.remove()}
+if(!ov.querySelector('.mvhint')&&ovm)ovm.insertAdjacentHTML('beforebegin','<div class="mvhint">Hold a section or menu item for half a second to move it \u00B7 <a id="mvreset">Reset layout</a></div>')}
+if(sbar)Array.prototype.slice.call(sbar.querySelectorAll('.navlabel')).forEach(function(lb){var nv=lb.nextElementSibling;
+if(!nv||!nv.classList.contains('nav')||lb.parentNode.classList.contains('ngrp'))return;
+var g=document.createElement('div');g.className='ngrp';lb.before(g);g.append(lb,nv)});
+function tag(el,id,g,t){if(el&&!el.dataset.mv){el.dataset.mv=id;el.dataset.mvg=g;if(t)el.dataset.mvt=t}}
+function tagAll(){
+if(ov){tag(ov.querySelector('#ovk'),'kpi','ov','Key numbers');tag(ov.querySelector('.ovg:not(.three)'),'ch1','ov','Sales charts');
+tag(ov.querySelector('.ovg.three'),'ch2','ov','Top products and attention');
+Array.prototype.forEach.call(ov.querySelectorAll('[data-sec]'),function(c){tag(c,c.dataset.sec,'ov',{deliv:'Delivery tracker',cash:'Daily cash',cust:'Customers',stock:'Stock and reorder'}[c.dataset.sec]||c.dataset.sec)})}
+if(sbar){Array.prototype.forEach.call(sbar.querySelectorAll('.ngrp'),function(g){var lb=g.querySelector('.navlabel');tag(g,lb?lb.textContent.trim():'grp','grp',lb?lb.textContent.trim():'')});
+Array.prototype.forEach.call(sbar.querySelectorAll('.nav button'),function(b){tag(b,b.dataset.t,'nav')})}
+if(mb)Array.prototype.forEach.call(mb.querySelectorAll('button'),function(b){tag(b,b.dataset.t,'mbar')})}
+function ids(p,g){return Array.prototype.filter.call(p.children,function(c){return c.dataset&&c.dataset.mvg===g}).map(function(c){return c.dataset.mv})}
+function order(p,list,g){var cur=Array.prototype.filter.call(p.children,function(c){return c.dataset&&c.dataset.mvg===g});if(!cur.length||!list)return;
+var last=cur[cur.length-1],end=last.nextElementSibling,map={};cur.forEach(function(c){map[c.dataset.mv]=c});
+var arr=[];list.forEach(function(i){if(map[i]){arr.push(map[i]);delete map[i]}});cur.forEach(function(c){if(map[c.dataset.mv])arr.push(c)});
+arr.forEach(function(c){p.insertBefore(c,end)})}
+function apply(){tagAll();
+if(ov)order(ov,L.ov,'ov');
+if(sbar){order(sbar,L.grp,'grp');
+if(L.nav){var seen={};Object.keys(L.nav).forEach(function(lbl){var g=Array.prototype.filter.call(sbar.querySelectorAll('.ngrp'),function(x){return x.dataset.mv===lbl})[0];if(!g)return;
+var nv=g.querySelector('.nav');L.nav[lbl].forEach(function(id){var b=sbar.querySelector('.nav button[data-mv="'+id+'"]');if(b){nv.appendChild(b);seen[id]=1}})});
+Array.prototype.forEach.call(sbar.querySelectorAll('.nav button'),function(b){if(!seen[b.dataset.mv])b.parentNode.appendChild(b)})}}
+if(mb)order(mb,L.mbar,'mbar')}
+function snap(){tagAll();L={};if(ov)L.ov=ids(ov,'ov');
+if(sbar){L.grp=ids(sbar,'grp');L.nav={};Array.prototype.forEach.call(sbar.querySelectorAll('.ngrp'),function(g){L.nav[g.dataset.mv]=ids(g.querySelector('.nav'),'nav')})}
+if(mb)L.mbar=ids(mb,'mbar');try{localStorage.setItem(KEY,JSON.stringify(L))}catch(e){}}
+apply();
+var rs=document.getElementById('mvreset');
+if(rs)rs.addEventListener('click',function(){if(confirm('Put the Overview and the menus back in the original order?')){try{localStorage.removeItem(KEY)}catch(e){}location.reload()}});
+var D=null,T=null,P=null,block=0,ghost=null,line=null,drop=null,scr=null,last={x:0,y:0};
+function cleanup(){clearTimeout(T);clearInterval(scr);T=null;scr=null;document.body.classList.remove('mvp');
+if(ghost){ghost.remove();ghost=null}if(line){line.remove();line=null}
+if(D){D.el.classList.remove('mvsrc')}D=null;P=null;drop=null}
+function place(t,x,y){var r=t.getBoundingClientRect(),s=D.el.getBoundingClientRect(),hz=Math.abs(r.top-s.top)<Math.min(r.height,s.height)/2;
+var before=hz?x<r.left+r.width/2:y<r.top+r.height/2;
+return{parent:t.parentNode,ref:before?t:t.nextElementSibling,r:r,hz:hz,before:before}}
+function calc(x,y){var n=document.elementFromPoint(x,y);if(!n)return null;var t=n.closest('[data-mv]');
+if(D.g==='nav'){if(t&&t.dataset.mvg==='nav'&&t!==D.el)return place(t,x,y);
+var gp=n.closest('.ngrp');if(gp){var nv=gp.querySelector('.nav'),f=nv.querySelector('[data-mv]');
+if(!f||(f===D.el&&!f.nextElementSibling)){var rr=nv.getBoundingClientRect();return{parent:nv,ref:null,r:rr,hz:false,before:false}}
+var fr=f.getBoundingClientRect();if(y<fr.top&&f!==D.el)return{parent:nv,ref:f,r:fr,hz:false,before:true}}
+return null}
+while(t&&t.dataset.mvg!==D.g)t=t.parentElement?t.parentElement.closest('[data-mv]'):null;
+if(!t||t===D.el)return null;return place(t,x,y)}
+function show(x,y){drop=calc(x,y);
+if(!drop){if(line)line.style.display='none';return}
+if(!line){line=document.createElement('div');line.className='mvline';document.body.appendChild(line)}
+var r=drop.r,s=line.style;s.display='block';
+if(drop.hz){s.left=(drop.before?r.left-4:r.right+1)+'px';s.top=r.top+'px';s.width='3px';s.height=r.height+'px'}
+else{s.left=r.left+'px';s.top=(drop.before?r.top-4:r.bottom+1)+'px';s.width=r.width+'px';s.height='3px'}}
+function start(){var el=D.el;
+ghost=document.createElement('div');ghost.className='mvghost';
+ghost.textContent=el.dataset.mvt||(el.textContent||'').replace(/\s+/g,' ').trim();
+ghost.style.maxWidth=Math.min(300,window.innerWidth-24)+'px';
+document.body.appendChild(ghost);D.on=true;el.classList.add('mvsrc');
+move(P.x,P.y);if(navigator.vibrate)try{navigator.vibrate(18)}catch(e){}
+scr=setInterval(function(){var y=last.y;if(y<80)window.scrollBy(0,-12);else if(y>window.innerHeight-80)window.scrollBy(0,12);else return;show(last.x,last.y)},30)}
+function move(x,y){last.x=x;last.y=y;if(!ghost)return;ghost.style.left=Math.max(8,Math.min(window.innerWidth-ghost.offsetWidth-8,x-ghost.offsetWidth/2))+'px';
+ghost.style.top=(y-ghost.offsetHeight-14)+'px';show(x,y)}
+document.addEventListener('pointerdown',function(e){if(e.button>0||D)return;tagAll();
+var tg=e.target;if(!tg.closest||tg.closest('input,select,textarea,a,[contenteditable],#dw,dialog'))return;
+var el=tg.closest('[data-mv]');if(!el)return;
+D={el:el,g:el.dataset.mvg,on:false};P={x:e.clientX,y:e.clientY};document.body.classList.add('mvp');
+T=setTimeout(function(){if(D)start()},500)},true);
+document.addEventListener('pointermove',function(e){if(!D)return;
+if(!D.on){if(Math.abs(e.clientX-P.x)>10||Math.abs(e.clientY-P.y)>10)cleanup();return}
+e.preventDefault();move(e.clientX,e.clientY)},true);
+document.addEventListener('touchmove',function(e){if(D&&D.on)e.preventDefault()},{passive:false,capture:true});
+document.addEventListener('contextmenu',function(e){if(D)e.preventDefault()},true);
+function fin(e){if(!D)return;var was=D.on,el=D.el,d=drop;
+if(was){block=Date.now()+500;e.stopPropagation();e.preventDefault()}
+cleanup();
+if(was&&d&&d.ref!==el){d.parent.insertBefore(el,d.ref);snap();setTimeout(function(){window.dispatchEvent(new Event('resize'))},50)}}
+document.addEventListener('pointerup',fin,true);
+document.addEventListener('pointercancel',function(){if(D&&D.on){block=Date.now()+300}cleanup()},true);
+['click','mouseup','touchend','mousedown'].forEach(function(n){document.addEventListener(n,function(e){if(Date.now()<block||(D&&D.on)){e.stopPropagation();e.preventDefault()}},true)})
 })();
   tab('dash');
 var _n=0,_t=setInterval(function(){_n++;var on=!$('#t-dash').hidden;if(on)paintExtras();if(sb&&BIZ){clearInterval(_t);if(on)kpis()}else if(_n>60)clearInterval(_t)},500);
