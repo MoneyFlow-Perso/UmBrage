@@ -1943,6 +1943,7 @@ box('<div class="rx-st">3 \u00B7 SETTINGS</div>'+
 '<label class="rx-tg"><input type="checkbox" id="rxx"'+(r.suspended?' checked':'')+'><span><b>Suspended</b><small>Not used until you turn this off.</small></span></label>')+
 '<div class="rx-act"><button class="gh" id="rxca">Cancel</button>'+(CUR?'<button class="gh" id="rxhi">History</button>':'')+'<button class="pri" id="rxsv">Save</button></div><div id="rxhl"></div>';
 drawParts();
+  if(window.RIX&&RIX.ed)RIX.ed(P,drawParts);                
 $('#rxam').addEventListener('click',function(){if(P.length>=6)return err({message:'A reply can have up to 6 parts.'});P.push({type:'text',text:''});drawParts()});
 $('#rxap').addEventListener('click',function(){if(P.length>=6)return err({message:'A reply can have up to 6 parts.'});$('#rxf').click()});
 $('#rxad').addEventListener('click',function(){if(P.length>=6)return err({message:'A reply can have up to 6 parts.'});if(!PR.length)return err({message:'Add a product in Products first.'});P.push({type:'product',product_id:null});drawParts()});
@@ -2068,6 +2069,48 @@ try{var now=new Date().toISOString(),q=await sb.from('umb_learned_responses').in
 if(q.error)throw q.error;$('#st').style.borderColor='';$('#st').textContent='Starter pack added.';var a=document.querySelector('#rxp .primary');if(a)a.click()}catch(e){sp.disabled=false;err(e)}})};
 window.PR_FOR_RI=function(){return PR};
 window.RIM.pack=packRows;
+})();
+  /* ===== Reply Intelligence v3b add-on: AI draft inside the reply editor ===== */
+(function(){
+function re(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}
+function bnd(s){return String(s).replace(/\d/g,function(d){return '০১২৩৪৫৬৭৮৯'.charAt(+d)})}
+function live(t){var o=String(t||'');(window.PR_FOR_RI?window.PR_FOR_RI():[]).forEach(function(p){
+if(p.active===false||!p.name)return;
+if(!new RegExp(re(p.name),'i').test(o))return;
+o=o.replace(new RegExp(re(p.name),'gi'),'{product}');
+[String(p.price),bnd(p.price)].forEach(function(pr){o=o.replace(new RegExp('(^|[^\\d০-৯.,])'+re(pr)+'(?![\\d০-৯])','g'),'$1{price}')})});return o}
+function noSalam(t){var x=String(t||'').replace(/^\s*(assalamu\s?alaikum|assalamualaikum|আসসালামু\s?আলাইকুম|আসসালামুআলাইকুম)[\s,.!।\-:]*/i,'').trim();return x||String(t||'').trim()}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+window.RIM=window.RIM||{};window.RIM.live=live;
+window.RIX=window.RIX||{};
+window.RIX.ed=function(P,redraw){
+var add=document.querySelector('#rxam');if(!add||!add.parentNode)return;
+var bt=document.createElement('button');bt.type='button';bt.className='rs-btn small';bt.id='rxai';bt.textContent='\u2728 AI draft';add.parentNode.append(bt);
+var out=document.createElement('div');out.id='rxao';$('#rxfs').after(out);
+var cur='',busy=false;
+function ask(){var t=($('#rxg').value||'').split('\n').map(function(s){return s.trim()}).filter(Boolean)[0];
+if(t)return t;var w=($('#rxw').value||'').split('\n')[0]||'';return w.split(',').map(function(s){return s.trim()}).filter(Boolean).slice(0,3).join(' ')}
+function paint(j){var lv=live(cur),hasLive=lv!==cur;
+out.innerHTML='<div class="rx-box" style="margin:10px 0 0"><div class="rx-st">\u2728 AI DRAFT</div><div class="rx-bub">'+esc(cur)+'</div>'+
+(j&&j.needs_human?'<div class="rx-hint rx-wn">The AI thinks a person should answer this kind of message'+(j.reason?': '+esc(j.reason):'')+'. Think twice before saving it as an automatic reply.</div>':'')+
+'<div class="rx-hint">Uses 1 AI draft'+(j&&typeof j.left==='number'?' ('+j.left+' left today)':'')+'. The greeting is left out; it is added when it is a new customer\u2019s first message. Edit it after adding.</div>'+
+'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px"><button type="button" class="rs-btn small primary" id="rxau">Add as message</button><button type="button" class="rs-btn small" id="rxar">Replace first message</button>'+(hasLive?'<button type="button" class="rs-btn small" id="rxal">Make price live</button>':'')+'<button type="button" class="rs-btn small" id="rxat">Try again</button><button type="button" class="rs-btn small" id="rxax">Close</button></div></div>';
+$('#rxau').addEventListener('click',function(){P.push({type:'text',text:cur});out.innerHTML='';redraw()});
+$('#rxar').addEventListener('click',function(){var f=P.filter(function(p){return p.type==='text'})[0];if(f)f.text=cur;else P.push({type:'text',text:cur});out.innerHTML='';redraw()});
+var l=$('#rxal');if(l)l.addEventListener('click',function(){cur=lv;paint(j)});
+$('#rxat').addEventListener('click',go);$('#rxax').addEventListener('click',function(){out.innerHTML=''})}
+async function go(){if(busy)return;var t=ask();
+if(!t){err({message:'Write a customer line (or word rules) in section 1 first, so the AI knows what the customer asks.'});return}
+if(typeof KB!=='undefined'&&KB&&KB.lim===0){err({message:'AI drafting is off (daily limit is 0).'});return}
+if(P.length>=6){err({message:'A reply can have up to 6 parts.'});return}
+busy=true;bt.disabled=true;out.innerHTML='<div class="rx-hint" style="margin-top:8px">Drafting...</div>';
+try{var r=await sb.functions.invoke('umb-draft',{body:{business_id:BIZ,text:t}});
+if(r.error){var m=await aiErr(r.error);throw new Error(m==='limit'?'Daily AI limit reached.':'AI draft failed ('+m+')')}
+var j=r.data;if(!j||!j.text)throw new Error('The AI gave no usable reply.');
+if(typeof j.left==='number'&&typeof KB!=='undefined'&&KB&&KB.lim)AI.used=KB.lim-j.left;
+cur=noSalam(j.text);paint(j)}catch(e){out.innerHTML='';err(e)}
+busy=false;bt.disabled=false}
+bt.addEventListener('click',go)};
 })();
   tab('dash');
 var _n=0,_t=setInterval(function(){_n++;var on=!$('#t-dash').hidden;if(on)paintExtras();if(sb&&BIZ){clearInterval(_t);if(on)kpis()}else if(_n>60)clearInterval(_t)},500);
