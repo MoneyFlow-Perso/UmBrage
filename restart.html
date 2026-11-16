@@ -1711,7 +1711,7 @@ var o=mb.querySelector('[data-t="ord"]');if(o)o.after(n);else mb.appendChild(n);
 })();
  /* ===== Reply Intelligence: 5 pills (step 3a: Overview + Reply Library) ===== */
 (function(){
-var KEYT='soon:Reply Intelligence',PILL='lib',EDIT=false,CUR=null,TK=0,ROWS=[],P=[];
+var KEYT='soon:RI-old',PILL='lib',EDIT=false,CUR=null,TK=0,ROWS=[],P=[];
 var CAT=['Products','Pricing','Delivery','Returns and exchange','Customer support','Sales and conversion','Brand identity','Promotions','Operations','FAQ'];
 var CH=[['whatsapp','WhatsApp'],['instagram','Instagram'],['messenger','Messenger'],['website','Website']];
 var LGS=[['bn','Bangla'],['banglish','Banglish'],['en','English']];
@@ -1798,7 +1798,181 @@ var _tRI=tab;
 tab=function(t){var s=$('#t-ri');
 if(t===KEYT){_tRI(t);var so=$('#t-soon');if(so)so.hidden=true;s.hidden=false;$('#pt').textContent='Reply Intelligence';pills();show();return}
 s.hidden=true;_tRI(t)};
-})(); 
+})();
+  /* ===== Reply Intelligence v2: premium look + photo and product parts ===== */
+(function(){
+var KEYT='soon:Reply Intelligence',PILL='lib',EDIT=false,CUR=null,TK=0,ROWS=[],P=[],URLS={};
+var CAT=['Products','Pricing','Delivery','Returns and exchange','Customer support','Sales and conversion','Brand identity','Promotions','Operations','FAQ'];
+var CH=[['whatsapp','WhatsApp'],['instagram','Instagram'],['messenger','Messenger'],['website','Website']];
+var LGS=[['bn','Bangla'],['banglish','Banglish'],['en','English']];
+var PL=[['ovw','Overview'],['lib','Reply Library'],['sug','Suggestions'],['qlab','Quality Lab'],['aset','Auto & Settings']];
+var IC={text:'\u{1F4AC}',photo:'\u{1F5BC}',product:'\u{1F6CD}'};
+var st=document.createElement('style');
+st.textContent=`
+#t-rx input[type=checkbox]{width:18px;height:18px;flex:none;margin:0;padding:0;accent-color:#19f39b}
+#t-rx .rx-pills{display:flex;gap:8px;overflow-x:auto;padding:2px 0 6px;margin:4px 0 12px;scrollbar-width:none}
+#t-rx .rx-pills::-webkit-scrollbar{display:none}
+#t-rx .rx-pills button{white-space:nowrap;flex:none}
+#t-rx .rx-hero{position:relative;overflow:hidden;padding:18px;margin-bottom:14px;border-radius:var(--radius);border:1px solid var(--line);background:linear-gradient(145deg,#11281fdb,#081711e8);box-shadow:0 18px 55px #0005,inset 0 1px #ffffff08;animation:rs-rise .4s ease both}
+#t-rx .rx-hero:after{content:"";position:absolute;right:-40px;top:-40px;width:140px;height:140px;border-radius:50%;background:radial-gradient(#19f39b30,transparent 70%);pointer-events:none}
+#t-rx .rx-eb{font-size:10px;letter-spacing:1.8px;color:var(--green);font-weight:800}
+#t-rx .rx-h{font-size:22px;font-weight:800;letter-spacing:-.5px;margin:5px 0 4px}
+#t-rx .rx-sub{font-size:12px;color:var(--muted);line-height:1.5}
+#t-rx .rx-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:14px}
+@media(min-width:900px){#t-rx .rx-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+#t-rx .rx-tile{padding:16px;animation:rs-rise .45s ease both}
+#t-rx .rx-tile .kv{font-size:28px;text-shadow:0 0 18px #19f39b33}
+#t-rx .rx-tile .rx-ti{color:var(--green);filter:drop-shadow(0 0 6px #19f39b88);font-size:16px}
+#t-rx .rx-box{padding:16px;margin-bottom:12px;border-radius:var(--radius);border:1px solid var(--line);background:linear-gradient(145deg,#11281fdb,#081711e8);box-shadow:0 18px 55px #0005,inset 0 1px #ffffff08;animation:rs-rise .4s ease both}
+#t-rx .rx-st{font-size:10px;letter-spacing:1.6px;color:var(--green);font-weight:800;margin-bottom:4px}
+#t-rx .rx-l{display:block;margin:14px 0 6px;font-size:12px;color:var(--muted);font-weight:650}
+#t-rx .rx-hint{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.45}
+#t-rx .rx-item{position:relative;padding:14px 14px 10px 17px;margin-bottom:10px;border-radius:var(--radius);border:1px solid var(--line);background:linear-gradient(145deg,#11281fdb,#081711e8);cursor:pointer;transition:.25s;animation:rs-rise .4s ease both;overflow:hidden}
+#t-rx .rx-item:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(var(--green),#00bd78);box-shadow:0 0 12px #19f39b88}
+#t-rx .rx-item.off:before{background:#ffc96b;box-shadow:none}
+#t-rx .rx-item:hover{transform:translateY(-2px);border-color:#39c98c66;box-shadow:0 14px 40px #0007,0 0 25px #19f39b0c}
+#t-rx .rx-it{font-weight:750;font-size:15px}
+#t-rx .rx-tr{font-size:12px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#t-rx .rx-rp{font-size:13px;margin:7px 0 9px;color:#d8ffea}
+#t-rx .rx-c{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;font-size:10px;font-weight:700;background:#19f39b1a;color:var(--green);border:1px solid #19f39b33;margin:0 5px 5px 0}
+#t-rx .rx-c.am{background:#ffc66d1f;color:var(--amber);border-color:#ffc66d33}
+#t-rx .rx-c.mu{background:#ffffff0a;color:var(--muted);border-color:var(--line)}
+#t-rx .rx-part{display:flex;gap:10px;align-items:flex-start;padding:10px;margin-bottom:8px;border:1px solid var(--line);border-radius:14px;background:#08170f;animation:rs-rise .3s ease both}
+#t-rx .rx-pi{width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:10px;background:#19f39b14;border:1px solid #19f39b33;font-size:16px}
+#t-rx .rx-pb{flex:1;min-width:0}
+#t-rx .rx-pc{display:flex;flex-direction:column;gap:4px}
+#t-rx .rx-pc button{padding:3px 8px;font-size:12px;line-height:1.2;border-radius:8px;background:#10251b;border:1px solid var(--line);color:var(--text)}
+#t-rx .rx-th{width:72px;height:72px;border-radius:10px;object-fit:cover;border:1px solid var(--line);background:#03130d}
+#t-rx .rx-add{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+#t-rx .rx-tg{display:flex;align-items:flex-start;gap:12px;padding:12px;margin-top:8px;border:1px solid var(--line);border-radius:12px;background:#08170f;cursor:pointer}
+#t-rx .rx-tg b{display:block;font-size:13px}
+#t-rx .rx-tg small{display:block;margin-top:2px;line-height:1.4}
+#t-rx .rx-chs{display:flex;flex-wrap:wrap;gap:8px}
+#t-rx .rx-ch{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--line);border-radius:99px;background:#08170f;font-size:13px;cursor:pointer}
+#t-rx .rx-act{display:flex;gap:8px;margin:14px 0 6px}
+#t-rx .rx-act button{flex:1}
+#t-rx .rx-step{display:flex;gap:12px;align-items:flex-start;padding:8px 0}
+#t-rx .rx-n{width:26px;height:26px;flex:none;display:grid;place-items:center;border-radius:50%;background:#19f39b1a;border:1px solid #19f39b44;color:var(--green);font-weight:800;font-size:12px}
+`;
+document.head.appendChild(st);
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function ago(t){var m=Math.round((Date.now()-new Date(t).getTime())/6e4);return m<1?'just now':m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago'}
+function box(x){return '<div class="rx-box">'+x+'</div>'}
+function fail(e){$('#rxb').innerHTML=box('Could not load: '+esc((e&&e.message)||e))}
+function prod(id){return PR.filter(function(p){return p.id===id})[0]}
+function sig(path){if(URLS[path])return Promise.resolve(URLS[path]);
+return sb.storage.from('umb-media').createSignedUrl(path,3600).then(function(r){var u=r&&r.data&&r.data.signedUrl;if(u)URLS[path]=u;return u||''}).catch(function(){return ''})}
+var sec=document.createElement('section');sec.id='t-rx';sec.hidden=true;
+sec.innerHTML='<div class="rx-pills" id="rxp"></div><div id="rxb"></div>';
+$('#t-soon').after(sec);
+function pills(){var r=$('#rxp');r.replaceChildren();
+PL.forEach(function(x){var b=document.createElement('button');b.className='rs-btn small'+(x[0]===PILL?' primary':'');b.textContent=x[1];
+b.addEventListener('click',function(){PILL=x[0];EDIT=false;CUR=null;pills();show()});r.append(b)})}
+function show(){var b=$('#rxb');
+if(!sb||!BIZ){b.innerHTML=box('Connect Supabase in Settings & Data to use Reply Intelligence.');return}
+if(PILL==='ovw')overview();
+else if(PILL==='lib'){if(EDIT)editor();else library()}
+else b.innerHTML=box('<div class="rx-st">'+esc(PL.filter(function(x){return x[0]===PILL})[0][1]).toUpperCase()+'</div><div class="rx-sub">'+(PILL==='sug'?'Your waiting examples are still in AI Training for now. They will move here in a later step.':'Coming in a later step.')+'</div>')}
+async function overview(){var b=$('#rxb'),my=++TK;b.innerHTML=box('<div class="rx-sub">Loading...</div>');
+try{var d=new Date().toISOString().slice(0,10);
+var a=await sb.from('umb_learned_responses').select('status,auto_answer,suspended').eq('business_id',BIZ).neq('status','rejected');
+var u=await sb.from('umb_ai_usage').select('calls,rule_replies').eq('business_id',BIZ).eq('day',d).limit(1);
+if(my!==TK)return;if(a.error)throw a.error;
+var L=a.data||[],act=L.filter(function(x){return x.status==='approved'&&!x.suspended}),U=(u.data&&u.data[0])||{};
+var T=[['\u2726','ACTIVE REPLIES',act.length],['\u23F3','WAITING APPROVAL',L.filter(function(x){return x.status==='pending'}).length],['\u26A1','ANSWER AUTOMATICALLY',act.filter(function(x){return x.auto_answer}).length],['\u23F8','SUSPENDED',L.filter(function(x){return x.suspended}).length],['\u{1F916}','AI CALLS TODAY',U.calls||0],['\u{1F4D8}','ANSWERED BY RULES TODAY',U.rule_replies||0]];
+var F=[['Saved reply','An exact match from your library answers first, no AI.'],['Word rules','Words like dam, koto, taka plus a product name get the live price.'],['AI draft','Only when nothing matches. You approve before it is sent.'],['You','Anything unclear is flagged for you.']];
+b.innerHTML='<div class="rx-hero"><div class="rx-eb">REPLY INTELLIGENCE</div><div class="rx-h">Answers that do not wait for AI</div><div class="rx-sub">Saved replies and word rules answer first. AI only helps when nothing matches.</div><div style="margin-top:12px"><button class="rs-btn primary small" id="rxgo">+ New reply</button></div></div>'+
+'<div class="rx-grid">'+T.map(function(t,i){return '<div class="rs-card rx-tile" style="animation-delay:'+(i*.05)+'s"><div class="rx-ti">'+t[0]+'</div><div class="rs-sub" style="margin-top:6px">'+t[1]+'</div><div class="kv">'+t[2]+'</div></div>'}).join('')+'</div>'+
+box('<div class="rx-st">HOW A MESSAGE IS ANSWERED</div>'+F.map(function(f,i){return '<div class="rx-step"><div class="rx-n">'+(i+1)+'</div><div><b style="font-size:13px">'+f[0]+'</b><div class="rx-sub">'+f[1]+'</div></div></div>'}).join('')+'<div class="rx-hint">Matching in live chats is the next build step. For now this library only stores and organises your replies.</div>');
+$('#rxgo').addEventListener('click',function(){PILL='lib';CUR=null;EDIT=true;pills();show()})}
+catch(e){if(my===TK)fail(e)}}
+async function library(){var b=$('#rxb'),my=++TK;b.innerHTML=box('<div class="rx-sub">Loading...</div>');
+try{var r=await sb.from('umb_learned_responses').select('*').eq('business_id',BIZ).eq('status','approved').order('keep_top',{ascending:false}).order('created_at',{ascending:false}).limit(300);
+if(my!==TK)return;if(r.error)throw r.error;ROWS=r.data||[];drawLib('')}catch(e){if(my===TK)fail(e)}}
+function drawLib(q){var b=$('#rxb'),qq=q.toLowerCase();
+var L=ROWS.filter(function(x){return !qq||[x.title,x.category,(x.triggers||[]).join(' '),x.approved_reply,(x.tags||[]).join(' ')].join(' ').toLowerCase().indexOf(qq)>-1});
+b.innerHTML='<div style="display:flex;gap:8px;margin-bottom:12px"><input id="rxs" placeholder="Search replies..." value="'+esc(q)+'" style="flex:1"><button class="rs-btn primary" id="rxnw">+ New</button></div>'+
+(L.length?L.map(function(x,i){var t=x.title||(x.triggers&&x.triggers[0])||x.customer_text||'Reply',ps=x.parts||[],n=function(k){return ps.filter(function(p){return p.type===k}).length},lg=LGS.filter(function(l){return l[0]===x.language})[0];
+return '<div class="rx-item'+(x.suspended?' off':'')+'" data-id="'+x.id+'" style="animation-delay:'+Math.min(i,8)*.04+'s"><div class="rx-it">'+esc(t)+(x.keep_top?' <span style="color:var(--green)">\u2605</span>':'')+'</div>'+
+'<div class="rx-tr">'+esc((x.triggers||[]).slice(0,2).join('  \u00B7  ')||((x.word_rules||[])[0]&&(x.word_rules[0].any||[]).join(', '))||'')+'</div>'+
+'<div class="rx-rp">'+esc((x.approved_reply||'').slice(0,100))+'</div>'+
+(x.category?'<span class="rx-c">'+esc(x.category)+'</span>':'')+(lg?'<span class="rx-c mu">'+lg[1]+'</span>':'')+
+(n('text')>1?'<span class="rx-c mu">'+IC.text+' '+n('text')+'</span>':'')+(n('photo')?'<span class="rx-c mu">'+IC.photo+' '+n('photo')+'</span>':'')+(n('product')?'<span class="rx-c mu">'+IC.product+' '+n('product')+'</span>':'')+
+(x.auto_answer?'<span class="rx-c">\u26A1 Auto</span>':'')+(x.suspended?'<span class="rx-c am">Suspended</span>':'')+'<span class="rx-c mu">v'+(x.version||1)+'</span></div>'}).join(''):box('<div class="rx-sub">No replies found.</div>'));
+var s=$('#rxs');s.addEventListener('input',function(){drawLib(s.value);var n=$('#rxs');n.focus();n.setSelectionRange(n.value.length,n.value.length)});
+$('#rxnw').addEventListener('click',function(){CUR=null;EDIT=true;show()});
+b.querySelectorAll('[data-id]').forEach(function(c){c.addEventListener('click',function(){CUR=ROWS.filter(function(x){return x.id===c.dataset.id})[0];EDIT=true;show()})})}
+function swap(i,j){if(j<0||j>=P.length)return;var t=P[i];P[i]=P[j];P[j]=t;drawParts()}
+function drawParts(){var d=$('#rxpt');d.replaceChildren();
+P.forEach(function(p,i){var w=document.createElement('div');w.className='rx-part';
+var ic=document.createElement('div');ic.className='rx-pi';ic.textContent=IC[p.type]||'\u2022';w.append(ic);
+var bd=document.createElement('div');bd.className='rx-pb';
+if(p.type==='text'){var t=document.createElement('textarea');t.rows=3;t.placeholder='Write the message...';t.value=p.text||'';t.addEventListener('input',function(){p.text=t.value});bd.append(t)}
+else if(p.type==='photo'){var im=document.createElement('img');im.className='rx-th';im.alt='Photo';bd.append(im);var sm=document.createElement('div');sm.className='rx-hint';sm.textContent='Photo sent in this order';bd.append(sm);sig(p.path).then(function(u){if(u)im.src=u})}
+else if(p.type==='product'){var s=document.createElement('select');var o0=document.createElement('option');o0.value='';o0.textContent='Choose a product...';s.append(o0);
+PR.filter(function(x){return x.active!==false||x.id===p.product_id}).forEach(function(x){var o=document.createElement('option');o.value=x.id;o.textContent=(x.code?x.code+' \u00B7 ':'')+x.name+' \u00B7 '+x.price+' Tk';if(x.id===p.product_id)o.selected=true;s.append(o)});
+s.addEventListener('change',function(){p.product_id=s.value||null});bd.append(s);var sm2=document.createElement('div');sm2.className='rx-hint';sm2.textContent='Sends the product name and its live price from Products.';bd.append(sm2)}
+else{bd.textContent=p.type+' (kept as is)'}
+w.append(bd);
+var c=document.createElement('div');c.className='rx-pc';
+[['\u25B2',function(){swap(i,i-1)},'Move up'],['\u25BC',function(){swap(i,i+1)},'Move down'],['\u00D7',function(){P.splice(i,1);drawParts()},'Remove']].forEach(function(a){var x=document.createElement('button');x.type='button';x.textContent=a[0];x.setAttribute('aria-label',a[2]);x.addEventListener('click',a[1]);c.append(x)});
+w.append(c);d.append(w)})}
+function pickImg(file){return new Promise(function(ok,no){var u=URL.createObjectURL(file),im=new Image();
+im.onload=function(){var s=Math.min(1,1280/Math.max(im.width,im.height)),cv=document.createElement('canvas');cv.width=Math.round(im.width*s);cv.height=Math.round(im.height*s);cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);URL.revokeObjectURL(u);cv.toBlob(function(b){b?ok(b):no(new Error('Could not read this image'))},'image/jpeg',.82)};
+im.onerror=function(){URL.revokeObjectURL(u);no(new Error('Could not read this image'))};im.src=u})}
+function editor(){var b=$('#rxb'),r=CUR||{},ch=r.channels||CH.map(function(x){return x[0]});
+P=JSON.parse(JSON.stringify(r.parts&&r.parts.length?r.parts:[{type:'text',text:r.approved_reply||''}]));
+var wr=(r.word_rules||[]).map(function(w){return(w.any||[]).join(', ')}).join('\n');
+b.innerHTML='<div class="rx-hero"><div class="rx-eb">'+(CUR?'EDIT REPLY':'NEW REPLY')+'</div><div class="rx-sub" style="margin-top:4px">Set when it triggers, what it sends, and how it behaves.</div></div>'+
+box('<div class="rx-st">1 \u00B7 WHEN THE CUSTOMER WRITES</div>'+
+'<label class="rx-l" style="margin-top:8px">Title</label><input id="rxt" value="'+esc(r.title||'')+'" placeholder="Example: Delivery charge">'+
+'<label class="rx-l">Category</label><select id="rxc"><option value="">(none)</option>'+CAT.map(function(c){return '<option'+(r.category===c?' selected':'')+'>'+c+'</option>'}).join('')+'</select>'+
+'<label class="rx-l">Customer lines (one per line)</label><textarea id="rxg" rows="4" placeholder="delivery charge koto?">'+esc((r.triggers||[]).join('\n'))+'</textarea>'+
+'<label class="rx-l">Word rules, optional</label><textarea id="rxw" rows="3" placeholder="dam, koto, taka, kemon">'+esc(wr)+'</textarea><div class="rx-hint">One rule per line. Words split by commas. Any one of them triggers this reply.</div>')+
+box('<div class="rx-st">2 \u00B7 WHAT IT SENDS, IN THIS ORDER</div><div id="rxpt" style="margin-top:8px"></div>'+
+'<div class="rx-add"><button type="button" class="rs-btn small" id="rxam">'+IC.text+' + Message</button><button type="button" class="rs-btn small" id="rxap">'+IC.photo+' + Photo</button><button type="button" class="rs-btn small" id="rxad">'+IC.product+' + Product</button></div>'+
+'<input type="file" id="rxf" accept="image/*" hidden><div class="rx-hint" id="rxfs"></div>')+
+box('<div class="rx-st">3 \u00B7 SETTINGS</div>'+
+'<label class="rx-l" style="margin-top:8px">Language</label><select id="rxl">'+LGS.map(function(l){return '<option value="'+l[0]+'"'+((r.language||'banglish')===l[0]?' selected':'')+'>'+l[1]+'</option>'}).join('')+'</select>'+
+'<label class="rx-l">Channels</label><div class="rx-chs">'+CH.map(function(c){return '<label class="rx-ch"><input type="checkbox" class="rxch" value="'+c[0]+'"'+(ch.indexOf(c[0])>-1?' checked':'')+'>'+c[1]+'</label>'}).join('')+'</div>'+
+'<label class="rx-l">Review date, optional</label><input type="date" id="rxd" value="'+esc(r.review_on||'')+'">'+
+'<label class="rx-tg"><input type="checkbox" id="rxk"'+(r.keep_top?' checked':'')+'><span><b>Keep at the top of the list</b></span></label>'+
+'<label class="rx-tg"><input type="checkbox" id="rxa"'+(r.auto_answer?' checked':'')+'><span><b>Answer automatically</b><small>When Auto mode is on and a customer writes one of the lines above, this reply goes out by itself, no AI.</small></span></label>'+
+'<label class="rx-tg"><input type="checkbox" id="rxx"'+(r.suspended?' checked':'')+'><span><b>Suspended</b><small>Not used until you turn this off.</small></span></label>')+
+'<div class="rx-act"><button class="gh" id="rxca">Cancel</button>'+(CUR?'<button class="gh" id="rxhi">History</button>':'')+'<button class="pri" id="rxsv">Save</button></div><div id="rxhl"></div>';
+drawParts();
+$('#rxam').addEventListener('click',function(){if(P.length>=6)return err({message:'A reply can have up to 6 parts.'});P.push({type:'text',text:''});drawParts()});
+$('#rxap').addEventListener('click',function(){if(P.length>=6)return err({message:'A reply can have up to 6 parts.'});$('#rxf').click()});
+$('#rxad').addEventListener('click',function(){if(P.length>=6)return err({message:'A reply can have up to 6 parts.'});if(!PR.length)return err({message:'Add a product in Products first.'});P.push({type:'product',product_id:null});drawParts()});
+$('#rxf').addEventListener('change',async function(){var f=this.files&&this.files[0];this.value='';if(!f)return;var s=$('#rxfs');s.textContent='Uploading photo...';
+try{var bl=await pickImg(f),path=BIZ+'/replies/'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.jpg';
+var up=await sb.storage.from('umb-media').upload(path,bl,{contentType:'image/jpeg'});if(up.error)throw up.error;
+P.push({type:'photo',path:path});s.textContent='';drawParts()}catch(e){s.textContent='';err(e)}});
+$('#rxa').addEventListener('change',function(){if(this.checked&&!confirm('This reply will go out by itself when Auto mode is on, with no AI and no review. Turn it on?'))this.checked=false});
+$('#rxca').addEventListener('click',function(){EDIT=false;CUR=null;show()});
+if(CUR)$('#rxhi').addEventListener('click',async function(){var h=$('#rxhl');h.innerHTML='<div class="rx-hint">Loading...</div>';
+try{var v=await sb.from('umb_reply_versions').select('version,changed_at,snapshot').eq('reply_id',CUR.id).order('changed_at',{ascending:false}).limit(10);if(v.error)throw v.error;
+h.innerHTML=v.data.length?box('<div class="rx-st">HISTORY</div>'+v.data.map(function(x){return '<div style="margin-top:8px;font-size:13px"><b>v'+x.version+'</b> \u00B7 '+ago(x.changed_at)+'<div class="rx-sub">'+esc(((x.snapshot&&x.snapshot.approved_reply)||'').slice(0,120))+'</div></div>'}).join('')):'<div class="rx-hint">No earlier versions yet.</div>'}catch(e){err(e)}});
+$('#rxsv').addEventListener('click',async function(){
+var trig=$('#rxg').value.split('\n').map(function(s){return s.trim()}).filter(Boolean),
+wrd=$('#rxw').value.split('\n').map(function(s){return s.split(',').map(function(w){return w.trim().toLowerCase()}).filter(Boolean)}).filter(function(a){return a.length}).map(function(a){return{any:a}}),
+parts=P.filter(function(p){return p.type==='text'?(p.text||'').trim():p.type==='photo'?p.path:p.type==='product'?p.product_id:true}).map(function(p){return p.type==='text'?{type:'text',text:p.text.trim()}:p}),
+tx=parts.filter(function(p){return p.type==='text'}),
+chs=Array.prototype.map.call(document.querySelectorAll('.rxch:checked'),function(c){return c.value});
+if(!trig.length&&!wrd.length){err({message:'Add at least one customer line or word rule.'});return}
+if(!tx.length){err({message:'Add a text message to the reply. Photos and products go with a message.'});return}
+if(!chs.length){err({message:'Choose at least one channel.'});return}
+var sus=$('#rxx').checked,o={title:$('#rxt').value.trim()||null,category:$('#rxc').value||null,triggers:trig,word_rules:wrd,parts:parts,language:$('#rxl').value,channels:chs,auto_answer:$('#rxa').checked,keep_top:$('#rxk').checked,suspended:sus,suspended_reason:sus?'Switched off by staff':null,review_on:$('#rxd').value||null,customer_text:trig[0]||wrd[0].any.join(' '),approved_reply:tx[0].text};
+try{var q;
+if(CUR)q=await sb.from('umb_learned_responses').update(o).eq('id',CUR.id).select('id');
+else q=await sb.from('umb_learned_responses').insert(Object.assign(o,{business_id:BIZ,status:'approved',reviewed_by:UID,reviewed_at:new Date().toISOString(),created_by:UID})).select('id');
+if(q.error)throw q.error;if(!q.data||!q.data.length)throw new Error('Not saved. Your account may not be allowed to change this.');
+$('#st').style.borderColor='';$('#st').textContent='Reply saved.';EDIT=false;CUR=null;show()}catch(e){err(e)}})}
+var _tRX=tab;
+tab=function(t){var s=$('#t-rx');
+if(t===KEYT){_tRX(t);var so=$('#t-soon');if(so)so.hidden=true;s.hidden=false;$('#pt').textContent='Reply Intelligence';pills();show();return}
+s.hidden=true;_tRX(t)};
+})();
   tab('dash');
 var _n=0,_t=setInterval(function(){_n++;var on=!$('#t-dash').hidden;if(on)paintExtras();if(sb&&BIZ){clearInterval(_t);if(on)kpis()}else if(_n>60)clearInterval(_t)},500);
 
