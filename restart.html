@@ -2112,6 +2112,51 @@ cur=noSalam(j.text);paint(j)}catch(e){out.innerHTML='';err(e)}
 busy=false;bt.disabled=false}
 bt.addEventListener('click',go)};
 })();
+  /* ===== Reply Intelligence v4: Suggestions pill ===== */
+(function(){
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function bx(x){return '<div class="rx-box">'+x+'</div>'}
+var prev=window.RIX&&window.RIX.pill,TKS=0;
+window.RIX=window.RIX||{};
+window.RIX.pill=function(pill,b,edit){
+if(pill!=='sug')return prev?prev(pill,b,edit):false;
+sug(b);return true};
+async function sug(b){var my=++TKS;
+b.innerHTML=bx('<div class="rx-sub">Loading...</div>');
+try{var r=await sb.from('umb_learned_responses').select('*').eq('business_id',BIZ).eq('status','pending').order('created_at',{ascending:false}).limit(50);
+if(my!==TKS)return;if(r.error)throw r.error;var L=r.data||[];
+b.innerHTML='<div class="rx-hero"><div class="rx-eb">SUGGESTIONS</div><div class="rx-h">Waiting for your approval</div><div class="rx-sub">In a chat, edit an AI draft and tap Save as example. It lands here. Approve it and it becomes a saved reply that can answer without AI.</div></div>'+
+(L.length?'':bx('<div class="rx-sub">Nothing waiting right now.</div>'))+'<div id="rxsl"></div>';
+var host=b.querySelector('#rxsl');
+L.forEach(function(x,i){host.append(card(x,i,b))})}
+catch(e){if(my===TKS)b.innerHTML=bx('Could not load: '+esc((e&&e.message)||e))}}
+function card(x,i,b){
+var d=document.createElement('div');d.className='rx-box';d.style.animationDelay=Math.min(i,8)*.04+'s';
+var lg0=x.language==='en'?'en':(x.language==='bn'||x.language==='banglish')?'bn':(window.RIM?RIM.lang(x.customer_text):'bn');
+d.innerHTML='<div class="rx-st">CUSTOMER WROTE</div><div class="rx-sub" style="color:var(--text);font-size:13px">'+esc(x.customer_text)+'</div>'+
+'<label class="rx-l">Customer line this reply answers (used for matching)</label><input class="sg-t" value="'+esc(x.customer_text)+'">'+
+'<label class="rx-l">Reply (remove any name, phone or address)</label><textarea class="sg-r" rows="4"></textarea>'+
+'<label class="rx-l">Language</label><select class="sg-l"><option value="bn">Bangla (also Banglish)</option><option value="en">English</option></select>'+
+'<div class="rx-hint">Tip: use {product} and {price} instead of a fixed name or price, so the reply stays live.</div>'+
+'<div class="rx-act"><button type="button" class="gh sg-x">Reject</button><button type="button" class="gh sg-p">Make price live</button><button type="button" class="pri sg-a">Approve</button></div>';
+var ta=d.querySelector('.sg-r'),ln=d.querySelector('.sg-t'),lg=d.querySelector('.sg-l');
+ta.value=x.approved_reply||'';lg.value=lg0;
+var pl=d.querySelector('.sg-p');
+if(!window.RIM||!RIM.live)pl.hidden=true;
+pl.addEventListener('click',function(){ta.value=RIM.live(ta.value)});
+function phone(s){return /(88)?01[3-9]\d{8}/.test(RIM.norm(s).replace(/\s/g,''))}
+d.querySelector('.sg-a').addEventListener('click',async function(){
+var rep=ta.value.trim(),line=ln.value.trim();
+if(!rep||!line){err({message:'Both the customer line and the reply are needed.'});return}
+if(phone(rep)||phone(line)){err({message:'A phone number is still in the text. Remove it first.'});return}
+try{var r=await sb.rpc('umb_learn_review',{p_id:x.id,p_status:'approved',p_reply:rep,p_language:lg.value});if(r.error)throw r.error;
+var u=await sb.from('umb_learned_responses').update({title:line.slice(0,60),customer_text:line,approved_reply:rep,language:lg.value,triggers:[line],parts:[{type:'text',text:rep}],channels:['whatsapp','instagram','messenger','website'],auto_answer:false,suspended:false}).eq('id',x.id).select('id');
+if(u.error)throw u.error;
+$('#st').style.borderColor='';$('#st').textContent='Saved as a reply. Answer automatically is off. Open Reply Library to add word rules.';sug(b)}catch(e){err(e)}});
+d.querySelector('.sg-x').addEventListener('click',async function(){
+try{var r=await sb.rpc('umb_learn_review',{p_id:x.id,p_status:'rejected'});if(r.error)throw r.error;sug(b)}catch(e){err(e)}});
+return d}
+})();
   tab('dash');
 var _n=0,_t=setInterval(function(){_n++;var on=!$('#t-dash').hidden;if(on)paintExtras();if(sb&&BIZ){clearInterval(_t);if(on)kpis()}else if(_n>60)clearInterval(_t)},500);
 
