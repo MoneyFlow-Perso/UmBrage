@@ -322,6 +322,7 @@ input[type=checkbox]{accent-color:#19f39b}
   <button data-t="prod"><span>▦</span>Products</button>
   <button data-t="camp"><span>◈</span>Marketing</button>
   <button data-t="learn"><span>✎</span>Training</button>
+      <button data-t="soon:Reply Intelligence"><span class="ico">✦</span> Reply Intelligence</button>
   <button data-t="crm:leads"><span>♧</span>CRM</button>
   <button data-t="set"><span>⚙</span>Settings</button>
 </nav>
@@ -1707,6 +1708,96 @@ n.addEventListener('click',function(){tab('deliv');try{n.scrollIntoView({inline:
 var o=mb.querySelector('[data-t="ord"]');if(o)o.after(n);else mb.appendChild(n);
   try{var Ls=JSON.parse(localStorage.getItem('umb:layout:v1')||'{}').mbar;if(Ls&&Ls.indexOf('deliv')>-1){var bs={};Array.prototype.forEach.call(mb.querySelectorAll('button'),function(b){bs[b.dataset.t]=b});Ls.forEach(function(i){if(bs[i])mb.appendChild(bs[i])});Array.prototype.forEach.call(mb.querySelectorAll('button'),function(b){if(Ls.indexOf(b.dataset.t)<0)mb.appendChild(b)})}}catch(e){}
 })();
+ /* ===== Reply Intelligence: 5 pills (step 3a: Overview + Reply Library) ===== */
+(function(){
+var KEYT='soon:Reply Intelligence',PILL='lib',EDIT=false,CUR=null,TK=0,ROWS=[],P=[];
+var CAT=['Products','Pricing','Delivery','Returns and exchange','Customer support','Sales and conversion','Brand identity','Promotions','Operations','FAQ'];
+var CH=[['whatsapp','WhatsApp'],['instagram','Instagram'],['messenger','Messenger'],['website','Website']];
+var LGS=[['bn','Bangla'],['banglish','Banglish'],['en','English']];
+var PL=[['ovw','Overview'],['lib','Reply Library'],['sug','Suggestions'],['qlab','Quality Lab'],['aset','Auto & Settings']];
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function ago(t){var m=Math.round((Date.now()-new Date(t).getTime())/6e4);return m<1?'just now':m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago'}
+function box(x){return '<div class="card" style="max-width:none">'+x+'</div>'}
+function fail(e){$('#rib').innerHTML=box('Could not load: '+esc((e&&e.message)||e))}
+var sec=document.createElement('section');sec.id='t-ri';sec.hidden=true;
+sec.innerHTML='<div class="ovr" id="rir" style="margin:6px 0 12px;overflow-x:auto;flex-wrap:nowrap"></div><div id="rib"></div>';
+$('#t-soon').after(sec);
+function pills(){var r=$('#rir');r.replaceChildren();
+PL.forEach(function(x){var b=document.createElement('button');b.className='rs-btn small'+(x[0]===PILL?' primary':'');b.style.whiteSpace='nowrap';b.textContent=x[1];
+b.addEventListener('click',function(){PILL=x[0];EDIT=false;CUR=null;pills();show()});r.append(b)})}
+function show(){var b=$('#rib');
+if(!sb||!BIZ){b.innerHTML=box('Connect Supabase in Settings & Data to use Reply Intelligence.');return}
+if(PILL==='ovw')overview();
+else if(PILL==='lib'){if(EDIT)editor();else library()}
+else b.innerHTML=box('<b>'+esc(PL.filter(function(x){return x[0]===PILL})[0][1])+'</b><div style="margin-top:6px;color:var(--muted);font-size:13px">'+(PILL==='sug'?'Your waiting examples are still in AI Training for now. They will move here in a later step.':'Coming in a later step.')+'</div>')}
+async function overview(){var b=$('#rib'),my=++TK;b.innerHTML=box('<small style="color:var(--muted)">Loading...</small>');
+try{var d=new Date().toISOString().slice(0,10);
+var a=await sb.from('umb_learned_responses').select('status,auto_answer,suspended').eq('business_id',BIZ).neq('status','rejected');
+var u=await sb.from('umb_ai_usage').select('calls,rule_replies').eq('business_id',BIZ).eq('day',d).limit(1);
+if(my!==TK)return;if(a.error)throw a.error;
+var L=a.data||[],act=L.filter(function(x){return x.status==='approved'&&!x.suspended}),U=(u.data&&u.data[0])||{};
+var T=[['ACTIVE REPLIES',act.length],['WAITING APPROVAL',L.filter(function(x){return x.status==='pending'}).length],['ANSWER AUTOMATICALLY',act.filter(function(x){return x.auto_answer}).length],['SUSPENDED',L.filter(function(x){return x.suspended}).length],['AI CALLS TODAY',U.calls||0],['ANSWERED BY RULES TODAY',U.rule_replies||0]];
+b.innerHTML='<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">'+T.map(function(t){return '<div class="rs-card p"><div class="rs-sub">'+t[0]+'</div><div class="kv">'+t[1]+'</div></div>'}).join('')+'</div>'}
+catch(e){if(my===TK)fail(e)}}
+async function library(){var b=$('#rib'),my=++TK;b.innerHTML=box('<small style="color:var(--muted)">Loading...</small>');
+try{var r=await sb.from('umb_learned_responses').select('*').eq('business_id',BIZ).eq('status','approved').order('keep_top',{ascending:false}).order('created_at',{ascending:false}).limit(300);
+if(my!==TK)return;if(r.error)throw r.error;ROWS=r.data||[];drawLib('')}catch(e){if(my===TK)fail(e)}}
+function drawLib(q){var b=$('#rib'),qq=q.toLowerCase();
+var L=ROWS.filter(function(x){return !qq||[x.title,x.category,(x.triggers||[]).join(' '),x.approved_reply,(x.tags||[]).join(' ')].join(' ').toLowerCase().indexOf(qq)>-1});
+b.innerHTML='<div style="display:flex;gap:8px;margin-bottom:10px"><input id="ris" placeholder="Search replies..." value="'+esc(q)+'" style="flex:1"><button class="rs-btn primary" id="rinw">+ New reply</button></div>'+
+(L.length?L.map(function(x){var t=x.title||(x.triggers&&x.triggers[0])||x.customer_text||'Reply';
+return '<div class="card" data-id="'+x.id+'" style="max-width:none;cursor:pointer;margin-bottom:10px"><b>'+esc(t)+'</b>'+(x.keep_top?' <small>\u2605</small>':'')+'<div style="font-size:13px;color:var(--muted);margin-top:4px">'+esc((x.triggers||[]).slice(0,2).join(' \u00B7 '))+'</div><div style="font-size:13px;margin-top:6px">'+esc((x.approved_reply||'').slice(0,90))+'</div><div style="margin-top:8px;font-size:11px;color:var(--muted)">'+(x.category?esc(x.category)+' \u00B7 ':'')+'v'+(x.version||1)+(x.auto_answer?' \u00B7 <span style="color:var(--green)">Answers automatically</span>':'')+(x.suspended?' \u00B7 <span style="color:#ffc96b">Suspended</span>':'')+'</div></div>'}).join(''):box('No replies found.'));
+var s=$('#ris');s.addEventListener('input',function(){drawLib(s.value);var n=$('#ris');n.focus();n.setSelectionRange(n.value.length,n.value.length)});
+$('#rinw').addEventListener('click',function(){CUR=null;EDIT=true;show()});
+b.querySelectorAll('[data-id]').forEach(function(c){c.addEventListener('click',function(){CUR=ROWS.filter(function(x){return x.id===c.dataset.id})[0];EDIT=true;show()})})}
+function drawParts(){var d=$('#rip');d.replaceChildren();
+P.forEach(function(p,i){var w=document.createElement('div');w.style.cssText='display:flex;gap:6px;margin-bottom:6px;align-items:flex-start';
+if(p.type==='text'){var t=document.createElement('textarea');t.rows=3;t.style.flex='1';t.value=p.text||'';t.addEventListener('input',function(){p.text=t.value});w.append(t)}
+else{var s=document.createElement('div');s.style.flex='1';s.className='notice';s.textContent=p.type+' (kept as is)';w.append(s)}
+var x=document.createElement('button');x.className='gh';x.textContent='\u00D7';x.setAttribute('aria-label','Remove');x.addEventListener('click',function(){P.splice(i,1);drawParts()});w.append(x);d.append(w)})}
+function editor(){var b=$('#rib'),r=CUR||{},ch=r.channels||CH.map(function(x){return x[0]});
+P=JSON.parse(JSON.stringify(r.parts&&r.parts.length?r.parts:[{type:'text',text:r.approved_reply||''}]));
+var wr=(r.word_rules||[]).map(function(w){return(w.any||[]).join(', ')}).join('\n'),lab='display:flex;gap:8px;align-items:center';
+b.innerHTML=box('<b>'+(CUR?'Edit reply':'New reply')+'</b>'+
+'<label>Title</label><input id="rit" value="'+esc(r.title||'')+'">'+
+'<label>Category</label><select id="ric"><option value="">(none)</option>'+CAT.map(function(c){return '<option'+(r.category===c?' selected':'')+'>'+c+'</option>'}).join('')+'</select>'+
+'<label>When the customer writes (one line each)</label><textarea id="rig" rows="4">'+esc((r.triggers||[]).join('\n'))+'</textarea>'+
+'<label>Word rules, optional (one rule per line, words split by commas, any of them triggers it)</label><textarea id="riw" rows="3" placeholder="dam, koto, taka, kemon">'+esc(wr)+'</textarea>'+
+'<label>Reply, sent in this order</label><div id="rip"></div><button class="rs-btn small" id="riam">+ Add a message</button> <small style="color:var(--muted)">Photos and products come in the next step.</small>'+
+'<label>Language</label><select id="ril">'+LGS.map(function(l){return '<option value="'+l[0]+'"'+((r.language||'banglish')===l[0]?' selected':'')+'>'+l[1]+'</option>'}).join('')+'</select>'+
+'<label>Channels</label><div style="display:flex;flex-wrap:wrap;gap:12px">'+CH.map(function(c){return '<label style="'+lab+'"><input type="checkbox" class="rich" value="'+c[0]+'"'+(ch.indexOf(c[0])>-1?' checked':'')+'>'+c[1]+'</label>'}).join('')+'</div>'+
+'<label>Review date, optional</label><input type="date" id="rid" value="'+esc(r.review_on||'')+'">'+
+'<label style="'+lab+'"><input type="checkbox" id="rik"'+(r.keep_top?' checked':'')+'> Keep at the top of the list</label>'+
+'<label style="'+lab+'"><input type="checkbox" id="ria"'+(r.auto_answer?' checked':'')+'> Answer automatically</label><small style="color:var(--muted)">When Auto mode is on and a customer writes one of the lines above, this reply goes out by itself, no AI.</small>'+
+'<label style="'+lab+'"><input type="checkbox" id="rix"'+(r.suspended?' checked':'')+'> Suspended (not used until you turn this off)</label>'+
+'<p class="ac" style="margin-top:14px"><button class="gh" id="rica">Cancel</button>'+(CUR?'<button class="gh" id="rihi">History</button>':'')+'<button class="pri" id="risv">Save</button></p><div id="rihl"></div>');
+drawParts();
+$('#riam').addEventListener('click',function(){P.push({type:'text',text:''});drawParts()});
+$('#ria').addEventListener('change',function(){if(this.checked&&!confirm('This reply will go out by itself when Auto mode is on, with no AI and no review. Turn it on?'))this.checked=false});
+$('#rica').addEventListener('click',function(){EDIT=false;CUR=null;show()});
+if(CUR)$('#rihi').addEventListener('click',async function(){var h=$('#rihl');h.innerHTML='<small style="color:var(--muted)">Loading...</small>';
+try{var v=await sb.from('umb_reply_versions').select('version,changed_at,snapshot').eq('reply_id',CUR.id).order('changed_at',{ascending:false}).limit(10);if(v.error)throw v.error;
+h.innerHTML=v.data.length?v.data.map(function(x){return '<div style="margin-top:8px;font-size:13px"><b>v'+x.version+'</b> \u00B7 '+ago(x.changed_at)+'<div style="color:var(--muted)">'+esc(((x.snapshot&&x.snapshot.approved_reply)||'').slice(0,120))+'</div></div>'}).join(''):'<small style="color:var(--muted)">No earlier versions yet.</small>'}catch(e){err(e)}});
+$('#risv').addEventListener('click',async function(){
+var trig=$('#rig').value.split('\n').map(function(s){return s.trim()}).filter(Boolean),
+wrd=$('#riw').value.split('\n').map(function(s){return s.split(',').map(function(w){return w.trim().toLowerCase()}).filter(Boolean)}).filter(function(a){return a.length}).map(function(a){return{any:a}}),
+parts=P.filter(function(p){return p.type!=='text'||(p.text||'').trim()}).map(function(p){return p.type==='text'?{type:'text',text:p.text.trim()}:p}),
+tx=parts.filter(function(p){return p.type==='text'}),
+chs=Array.prototype.map.call(document.querySelectorAll('.rich:checked'),function(c){return c.value});
+if(!trig.length&&!wrd.length){err({message:'Add at least one customer line or word rule.'});return}
+if(!tx.length){err({message:'Add a text message to the reply.'});return}
+if(!chs.length){err({message:'Choose at least one channel.'});return}
+var sus=$('#rix').checked,o={title:$('#rit').value.trim()||null,category:$('#ric').value||null,triggers:trig,word_rules:wrd,parts:parts,language:$('#ril').value,channels:chs,auto_answer:$('#ria').checked,keep_top:$('#rik').checked,suspended:sus,suspended_reason:sus?'Switched off by staff':null,review_on:$('#rid').value||null,customer_text:trig[0]||wrd[0].any.join(' '),approved_reply:tx[0].text};
+try{var q;
+if(CUR)q=await sb.from('umb_learned_responses').update(o).eq('id',CUR.id).select('id');
+else q=await sb.from('umb_learned_responses').insert(Object.assign(o,{business_id:BIZ,status:'approved',reviewed_by:UID,reviewed_at:new Date().toISOString(),created_by:UID})).select('id');
+if(q.error)throw q.error;if(!q.data||!q.data.length)throw new Error('Not saved. Your account may not be allowed to change this.');
+$('#st').style.borderColor='';$('#st').textContent='Reply saved.';EDIT=false;CUR=null;show()}catch(e){err(e)}})}
+var _tRI=tab;
+tab=function(t){var s=$('#t-ri');
+if(t===KEYT){_tRI(t);var so=$('#t-soon');if(so)so.hidden=true;s.hidden=false;$('#pt').textContent='Reply Intelligence';pills();show();return}
+s.hidden=true;_tRI(t)};
+})(); 
   tab('dash');
 var _n=0,_t=setInterval(function(){_n++;var on=!$('#t-dash').hidden;if(on)paintExtras();if(sb&&BIZ){clearInterval(_t);if(on)kpis()}else if(_n>60)clearInterval(_t)},500);
 
