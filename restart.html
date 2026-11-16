@@ -2157,6 +2157,92 @@ d.querySelector('.sg-x').addEventListener('click',async function(){
 try{var r=await sb.rpc('umb_learn_review',{p_id:x.id,p_status:'rejected'});if(r.error)throw r.error;sug(b)}catch(e){err(e)}});
 return d}
 })();
+  /* ===== Reply Intelligence v5: Auto & Settings pill ===== */
+(function(){
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function bx(x){return '<div class="rx-box">'+x+'</div>'}
+var prev=window.RIX&&window.RIX.pill,TKA=0,ST={};
+window.RIX=window.RIX||{};
+window.RIX.pill=function(pill,b,edit){
+if(pill!=='aset')return prev?prev(pill,b,edit):false;
+aset(b);return true};
+var COLS='auto_mode,sleep_auto,sleep_start,sleep_end,timezone,holding_reply,auto_shadow_until';
+var DEF={bn:'ধন্যবাদ! আপনার মেসেজটি আমরা পেয়েছি। আমাদের টিম খুব শীঘ্রই আপনাকে জানাবে।',en:'Thank you! We received your message and our team will get back to you shortly.'};
+function hm(t,d){return t?String(t).slice(0,5):d}
+function nowHM(){return new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Dhaka',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date())}
+function inWin(s,e,n){if(s===e)return false;return s<e?(n>=s&&n<e):(n>=s||n<e)}
+function fmt(t){return new Date(t).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'})}
+function shadowOn(){return !!ST.auto_shadow_until&&new Date(ST.auto_shadow_until)>new Date()}
+function week(){return new Date(Date.now()+7*864e5).toISOString()}
+function hold(){var p=String(ST.holding_reply||'').split(/\n-{3,}\n/);return{bn:(p[0]||'').trim()||DEF.bn,en:(p[1]||'').trim()||DEF.en}}
+function mode(){var on=ST.auto_mode||(ST.sleep_auto&&inWin(hm(ST.sleep_start,'23:00'),hm(ST.sleep_end,'08:00'),nowHM()));
+if(!on)return['OFF','Nothing is answered by itself right now.'];
+return shadowOn()?['SHADOW RUN','Auto mode only writes what it would send. Nothing goes out.']:['LIVE','Safe questions are answered by the server.']}
+function msg(t){$('#st').style.borderColor='';$('#st').textContent=t}
+async function save(o){
+var r=await sb.from('umb_settings').update(o).eq('business_id',BIZ).select('business_id');
+if(r.error)throw r.error;
+if(!r.data||!r.data.length){r=await sb.from('umb_settings').upsert(Object.assign({business_id:BIZ},o)).select('business_id');if(r.error)throw r.error}
+Object.assign(ST,o)}
+async function aset(b){var my=++TKA;
+b.innerHTML=bx('<div class="rx-sub">Loading...</div>');
+try{var s=await sb.from('umb_settings').select(COLS).eq('business_id',BIZ).maybeSingle();
+var g=await sb.from('umb_auto_log').select('*').eq('business_id',BIZ).order('created_at',{ascending:false}).limit(100);
+if(my!==TKA)return;if(s.error)throw s.error;if(g.error)throw g.error;
+ST=s.data||{};draw(b,g.data||[])}
+catch(e){if(my===TKA)b.innerHTML=bx('Could not load: '+esc((e&&e.message)||e))}}
+function draw(b,L){
+var m=mode(),h=hold(),wk=Date.now()-7*864e5,W=L.filter(function(x){return new Date(x.created_at)>wk});
+var cnt=function(f){return W.filter(f).length};
+var T=[['WOULD SEND (SHADOW)',cnt(function(x){return x.mode==='shadow'&&x.decision==='send'})],['SENT BY AUTO',cnt(function(x){return x.sent})],['NEEDED YOU',cnt(function(x){return x.decision==='hold'||x.decision==='flag'})]];
+var sh=shadowOn(),done=ST.auto_shadow_until&&!sh;
+b.innerHTML='<div class="rx-hero"><div class="rx-eb">AUTO MODE</div><div class="rx-h">'+m[0]+'</div><div class="rx-sub">'+m[1]+'</div><div class="rx-hint" style="margin-top:8px">The server part comes in the next step. Until then this page only saves your settings.</div></div>'+
+'<div class="rx-grid">'+T.map(function(t,i){return '<div class="rs-card rx-tile" style="animation-delay:'+(i*.05)+'s"><div class="rs-sub">'+t[0]+'</div><div class="kv">'+t[1]+'</div></div>'}).join('')+'</div>'+
+bx('<div class="rx-st">1 \u00B7 TURN ON</div>'+
+'<label class="rx-tg"><input type="checkbox" id="aum"'+(ST.auto_mode?' checked':'')+'><span><b>Auto mode on now</b><small>The server answers safe questions while you are away. Stays on until you turn it off.</small></span></label>'+
+'<div class="rx-hint" style="margin-top:10px">'+(sh?'Shadow run until '+fmt(ST.auto_shadow_until)+'. Nothing is sent, it is only logged.':done?'Shadow run finished '+fmt(ST.auto_shadow_until)+'. Auto mode now really sends.':'No shadow run yet. The first time you turn Auto on, a 7-day shadow run starts.')+'</div>'+
+'<div class="rx-act">'+(sh?'<button type="button" class="gh" id="aug">Go live now</button>':'<button type="button" class="gh" id="aur">Start 7-day shadow run</button>')+'<button type="button" class="pri" id="aux" style="background:#c0392b">Stop all auto now</button></div>')+
+bx('<div class="rx-st">2 \u00B7 SLEEPING HOURS</div>'+
+'<label class="rx-tg"><input type="checkbox" id="auz"'+(ST.sleep_auto?' checked':'')+'><span><b>Auto mode turns on by itself</b><small>Every day between the two times below (Asia/Dhaka). Now: '+nowHM()+'.</small></span></label>'+
+'<div style="display:flex;gap:10px;margin-top:10px"><div style="flex:1"><label class="rx-l" style="margin-top:0">From</label><input type="time" id="aua" value="'+hm(ST.sleep_start,'23:00')+'"></div><div style="flex:1"><label class="rx-l" style="margin-top:0">Until</label><input type="time" id="aub" value="'+hm(ST.sleep_end,'08:00')+'"></div></div>'+
+'<div class="rx-act"><button type="button" class="pri" id="aus">Save sleeping hours</button></div>')+
+bx('<div class="rx-st">3 \u00B7 HOLDING REPLY</div><div class="rx-hint">Sent when Auto cannot answer safely. You are also flagged to answer.</div>'+
+'<label class="rx-l">Bangla (also Banglish customers)</label><textarea id="auh1" rows="3">'+esc(h.bn)+'</textarea>'+
+'<label class="rx-l">English</label><textarea id="auh2" rows="3">'+esc(h.en)+'</textarea>'+
+'<div class="rx-act"><button type="button" class="pri" id="auh">Save holding replies</button></div>')+
+bx('<div class="rx-st">4 \u00B7 WHAT AUTO DOES</div>'+
+'<div class="rx-step"><div class="rx-n">\u2713</div><div class="rx-sub">Answers price, sizes, stock yes or no, delivery charge and exchange policy, from live data and your saved replies that have Answer automatically ticked.</div></div>'+
+'<div class="rx-step"><div class="rx-n">?</div><div class="rx-sub">If the product is unclear it asks which product. If it does not understand, it sends the holding reply and flags you. No guessing.</div></div>'+
+'<div class="rx-step"><div class="rx-n">\u2715</div><div class="rx-sub">Never takes orders, never talks about money or payment commitments, never answers outside the WhatsApp 24-hour window.</div></div>')+
+bx('<div class="rx-st">5 \u00B7 LOG</div>'+(L.length?L.slice(0,30).map(function(x){return '<div style="padding:8px 0;border-top:1px solid var(--line)"><div style="font-size:12px"><b>'+esc(x.decision)+'</b> <span class="rx-c mu">'+esc(x.mode)+'</span>'+(x.sent?'<span class="rx-c">sent</span>':'')+' <span style="color:var(--muted)">'+fmt(x.created_at)+'</span></div>'+(x.reason?'<div class="rx-hint">'+esc(x.reason)+'</div>':'')+(x.reply_preview?'<div class="rx-rp">'+esc(x.reply_preview)+'</div>':'')+'</div>'}).join(''):'<div class="rx-sub">Nothing logged yet.</div>'));
+var am=b.querySelector('#aum');
+am.addEventListener('change',async function(){
+try{if(am.checked){var first=!ST.auto_shadow_until;
+if(!confirm(first?'Turn Auto mode on? It starts with a 7-day shadow run: it only logs what it would send, nothing goes out.':'Turn Auto mode on? It will answer safe questions by itself, with no review.')){am.checked=false;return}
+var o={auto_mode:true};if(first)o.auto_shadow_until=week();
+await save(o);msg(first?'Auto mode on, shadow run for 7 days.':'Auto mode on.')}
+else{await save({auto_mode:false});msg('Auto mode off.')}
+aset(b)}catch(e){am.checked=!am.checked;err(e)}});
+var bg=b.querySelector('#aug');
+if(bg)bg.addEventListener('click',async function(){
+if(!confirm('End the shadow run and go live? Auto mode will really send replies.'))return;
+try{await save({auto_shadow_until:new Date().toISOString()});msg('Shadow run ended.');aset(b)}catch(e){err(e)}});
+var br=b.querySelector('#aur');
+if(br)br.addEventListener('click',async function(){
+try{await save({auto_shadow_until:week()});msg('Shadow run started for 7 days.');aset(b)}catch(e){err(e)}});
+b.querySelector('#aux').addEventListener('click',async function(){
+try{await save({auto_mode:false,sleep_auto:false});msg('All auto stopped.');aset(b)}catch(e){err(e)}});
+b.querySelector('#aus').addEventListener('click',async function(){
+var on=b.querySelector('#auz').checked,s=b.querySelector('#aua').value||'23:00',e=b.querySelector('#aub').value||'08:00';
+try{if(on&&!ST.sleep_auto&&!confirm('Auto mode will turn on by itself every day from '+s+' to '+e+' (Dhaka time). Continue?'))return;
+var o={sleep_auto:on,sleep_start:s,sleep_end:e,timezone:'Asia/Dhaka'};
+if(on&&!ST.auto_shadow_until)o.auto_shadow_until=week();
+await save(o);msg('Sleeping hours saved.');aset(b)}catch(er){err(er)}});
+b.querySelector('#auh').addEventListener('click',async function(){
+var a=b.querySelector('#auh1').value.trim(),c=b.querySelector('#auh2').value.trim();
+if(!a||!c){err({message:'Write both holding replies.'});return}
+try{await save({holding_reply:a+'\n---\n'+c});msg('Holding replies saved.');aset(b)}catch(e){err(e)}})}
+})();
   tab('dash');
 var _n=0,_t=setInterval(function(){_n++;var on=!$('#t-dash').hidden;if(on)paintExtras();if(sb&&BIZ){clearInterval(_t);if(on)kpis()}else if(_n>60)clearInterval(_t)},500);
 
