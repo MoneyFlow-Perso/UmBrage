@@ -1804,7 +1804,7 @@ s.hidden=true;_tRI(t)};
 var KEYT='soon:Reply Intelligence',PILL='lib',EDIT=false,CUR=null,TK=0,ROWS=[],P=[],URLS={};
 var CAT=['Products','Pricing','Delivery','Returns and exchange','Customer support','Sales and conversion','Brand identity','Promotions','Operations','FAQ'];
 var CH=[['whatsapp','WhatsApp'],['instagram','Instagram'],['messenger','Messenger'],['website','Website']];
-var LGS=[['bn','Bangla'],['banglish','Banglish'],['en','English']];
+var LGS=[['bn','Bangla (also Banglish)'],['en','English']];
 var PL=[['ovw','Overview'],['lib','Reply Library'],['sug','Suggestions'],['qlab','Quality Lab'],['aset','Auto & Settings']];
 var IC={text:'\u{1F4AC}',photo:'\u{1F5BC}',product:'\u{1F6CD}'};
 var st=document.createElement('style');
@@ -1870,6 +1870,7 @@ PL.forEach(function(x){var b=document.createElement('button');b.className='rs-bt
 b.addEventListener('click',function(){PILL=x[0];EDIT=false;CUR=null;pills();show()});r.append(b)})}
 function show(){var b=$('#rxb');
 if(!sb||!BIZ){b.innerHTML=box('Connect Supabase in Settings & Data to use Reply Intelligence.');return}
+                if(window.RIX&&RIX.pill&&RIX.pill(PILL,b,EDIT))return;
 if(PILL==='ovw')overview();
 else if(PILL==='lib'){if(EDIT)editor();else library()}
 else b.innerHTML=box('<div class="rx-st">'+esc(PL.filter(function(x){return x[0]===PILL})[0][1]).toUpperCase()+'</div><div class="rx-sub">'+(PILL==='sug'?'Your waiting examples are still in AI Training for now. They will move here in a later step.':'Coming in a later step.')+'</div>')}
@@ -1901,6 +1902,7 @@ return '<div class="rx-item'+(x.suspended?' off':'')+'" data-id="'+x.id+'" style
 (x.auto_answer?'<span class="rx-c">\u26A1 Auto</span>':'')+(x.suspended?'<span class="rx-c am">Suspended</span>':'')+'<span class="rx-c mu">v'+(x.version||1)+'</span></div>'}).join(''):box('<div class="rx-sub">No replies found.</div>'));
 var s=$('#rxs');s.addEventListener('input',function(){drawLib(s.value);var n=$('#rxs');n.focus();n.setSelectionRange(n.value.length,n.value.length)});
 $('#rxnw').addEventListener('click',function(){CUR=null;EDIT=true;show()});
+                    if(window.RIX&&RIX.lib)RIX.lib(b,ROWS);
 b.querySelectorAll('[data-id]').forEach(function(c){c.addEventListener('click',function(){CUR=ROWS.filter(function(x){return x.id===c.dataset.id})[0];EDIT=true;show()})})}
 function swap(i,j){if(j<0||j>=P.length)return;var t=P[i];P[i]=P[j];P[j]=t;drawParts()}
 function drawParts(){var d=$('#rxpt');d.replaceChildren();
@@ -1972,6 +1974,100 @@ var _tRX=tab;
 tab=function(t){var s=$('#t-rx');
 if(t===KEYT){_tRX(t);var so=$('#t-soon');if(so)so.hidden=true;s.hidden=false;$('#pt').textContent='Reply Intelligence';pills();show();return}
 s.hidden=true;_tRX(t)};
+})();
+  /* ===== Reply Intelligence v3 add-on: matcher, Test box, live fill-ins, Starter pack ===== */
+(function(){
+var AL=[['dam','daam','দাম','price','rate','mullo','মূল্য','cost'],['koto','kto','কত','much'],['taka','tk','টাকা'],['kemon','kmn','কেমন'],['delivery','dilivery','ডেলিভারি','courier','কুরিয়ার','shipping'],['charge','chrg','চার্জ','khoroch','খরচ'],['size','sizes','সাইজ'],['stock','available','ache','achhe','আছে'],['payment','pay','পেমেন্ট'],['bkash','bikash','বিকাশ'],['nagad','নগদ'],['cod','cash','ক্যাশ'],['order','অর্ডার'],['thanks','thank','thx','dhonnobad','ধন্যবাদ'],['hi','hello','hey','হ্যালো','হাই'],['salam','assalamualaikum','assalamu','সালাম','আসসালামু']];
+var BN=['dam','koto','taka','kemon','ache','achhe','lagbe','hobe','hbe','ami','apni','amar','apnar','kore','korbo','den','dibo','pabo','nibo','kothay','kon','kivabe','kibhabe','ki','ekta','jonno','chai','chaichi','bhai','vai','apu','dilen','dite','nite','pathan','pathaben','bolen','bolun','janan','jante','salam','assalamualaikum','assalamu','walaikum','dhonnobad','nai','nei','kinbo','kinte'];
+var ASK={bn:'কোন পণ্যটির কথা বলছেন? অনুগ্রহ করে পণ্যের নাম বা কোড পাঠান।',en:'Which product do you mean? Please send the product name or code.'};
+function norm(s){return String(s||'').toLowerCase().replace(/[\u09E6-\u09EF]/g,function(c){return String(c.charCodeAt(0)-0x09E6)}).replace(/[^\p{L}\p{M}\p{N}\s]/gu,' ').replace(/\s+/g,' ').trim()}
+function isBn(s){return /[\u0980-\u09FF]/.test(s)}
+function lang(s){if(isBn(s))return 'bn';return norm(s).split(' ').some(function(w){return BN.indexOf(w)>-1})?'bn':'en'}
+function gid(w){for(var i=0;i<AL.length;i++)if(AL[i].indexOf(w)>-1)return 'g'+i;return w}
+function tokMatch(t,a){return t===a||(a.length>=3&&t.indexOf(a)===0&&t.length-a.length<=(isBn(a)?3:2))}
+function hit(tk,w){if(w.indexOf(' ')>-1)return (' '+tk.join(' ')+' ').indexOf(' '+w+' ')>-1;
+var g=gid(w),L=g.charAt(0)==='g'&&/^g\d+$/.test(g)?AL[+g.slice(1)]:[w];
+return L.some(function(a){a=norm(a);return tk.some(function(t){return tokMatch(t,a)})})}
+function findProd(tk,msg){var best=null,bl=0;
+(window.PR_FOR_RI?window.PR_FOR_RI():[]).forEach(function(p){if(p.active===false)return;var nm=norm(p.name),cd=norm(p.code),ok=false,len=0;
+if(cd&&tk.indexOf(cd)>-1){ok=true;len=cd.length+100}
+else if(nm){var nt=nm.split(' ').filter(function(w){return w.length>=3});
+if((' '+msg+' ').indexOf(' '+nm+' ')>-1){ok=true;len=nm.length}
+else if(nt.length&&nt.every(function(w){return tk.some(function(t){return tokMatch(t,w)})})){ok=true;len=nm.length}}
+if(ok&&len>bl){best=p;bl=len}});return best}
+function needsP(r){return (r.parts||[{type:'text',text:r.approved_reply}]).some(function(x){return x.type==='text'&&/\{(product|price|code)\}/.test(x.text||'')})}
+function match(text,rows,chan){
+var msg=norm(text),tk=msg?msg.split(' '):[],lg=lang(text),p=findProd(tk,msg),C=[];
+rows.forEach(function(r){
+if(r.suspended)return;if(r.status&&r.status!=='approved')return;
+if(chan&&r.channels&&r.channels.length&&r.channels.indexOf(chan)<0)return;
+var g=r.language==='en'?'en':'bn',sc=0,why='';
+(r.triggers||[]).forEach(function(t){var n=norm(t);if(!n)return;
+if(n===msg){if(sc<100){sc=100;why='exact line'}}
+else if(n.indexOf(' ')>-1&&(' '+msg+' ').indexOf(' '+n+' ')>-1){if(sc<85){sc=85;why='contains line'}}});
+(r.word_rules||[]).forEach(function(w){var seen={},m=0,hits=[];
+(w.any||[]).forEach(function(x){var nx=norm(x);if(!nx)return;var gi=gid(nx);if(seen[gi])return;if(hit(tk,nx)){seen[gi]=1;m++;hits.push(x)}});
+if(m){var s=Math.min(70,40+15*(m-1));if(s>sc){sc=s;why='words: '+hits.join(', ')}}});
+if(!sc)return;var np=needsP(r);if(p&&np)sc=Math.min(100,sc+20);
+C.push({r:r,sc:sc,why:why,g:g,np:np})});
+C.sort(function(a,b){return b.sc-a.sc});
+var pref=C.filter(function(c){return c.g===lg}),oth=C.filter(function(c){return c.g!==lg}),o={lang:lg,prod:p,cands:C.slice(0,4),kind:'none'};
+if(pref[0]){var t=pref[0],gap=t.sc-(pref[1]?pref[1].sc:0);o.top=t;
+if(t.np&&!p&&t.sc>=40)o.kind='ask_product';else if(t.sc>=50&&gap>=15)o.kind='send';else o.kind='unsure'}
+else if(oth[0]){o.kind='other_lang';o.top=oth[0]}
+return o}
+function fill(t,c){var p=c.p;return String(t||'').replace(/\{name\}/g,c.name||'').replace(/\{product\}/g,p?p.name:'').replace(/\{price\}/g,p?p.price:'').replace(/\{code\}/g,p?(p.code||''):'')}
+function render(r,c){var o=[];(r.parts&&r.parts.length?r.parts:[{type:'text',text:r.approved_reply}]).forEach(function(x){
+if(x.type==='text')o.push({k:'text',t:fill(x.text,c)});
+else if(x.type==='photo')o.push({k:'photo',path:x.path});
+else if(x.type==='product'){var q=(window.PR_FOR_RI?window.PR_FOR_RI():[]).filter(function(y){return y.id===x.product_id})[0]||c.p;if(q)o.push({k:'product',t:(q.code?q.code+' \u00B7 ':'')+q.name+' \u2014 '+q.price+' Tk'})}});return o}
+window.RIM={norm:norm,lang:lang,match:match,render:render,ASK:ASK};
+/* ----- Starter pack ----- */
+var ALLCH=['whatsapp','instagram','messenger','website'];
+var PACK=[
+['Product price','Pricing',['dam koto','koto taka','দাম কত'],['dam','koto','taka','kemon','price','rate','দাম','কত','টাকা','কেমন'],'{product} এর দাম {price} টাকা।',['price?','how much'],['price','cost','rate','much'],'{product} costs {price} Tk.'],
+['Delivery charge','Delivery',['delivery charge koto','ডেলিভারি চার্জ কত'],['delivery','charge','courier','koto','ডেলিভারি','চার্জ','কুরিয়ার','কত'],'ঢাকার ভেতরে ডেলিভারি চার্জ ৬০ টাকা এবং ঢাকার বাইরে ১২০ টাকা।',['delivery charge','shipping cost'],['delivery','charge','courier','shipping'],'Delivery charge is 60 Tk inside Dhaka and 120 Tk outside Dhaka.'],
+['Payment methods','Operations',['payment kivabe','bkash e dibo'],['payment','pay','bkash','nagad','cod','cash','পেমেন্ট','বিকাশ','নগদ','ক্যাশ'],'আমরা ক্যাশ অন ডেলিভারি, বিকাশ এবং নগদে পেমেন্ট নিই।',['how to pay'],['payment','pay','bkash','nagad','cod','cash'],'You can pay by cash on delivery, bKash or Nagad.'],
+['How to order','Sales and conversion',['order korbo','kivabe order korbo','অর্ডার করতে চাই'],['order','nibo','kinbo','kinte','অর্ডার','নিব','কিনবো'],'অর্ডার করতে আপনার নাম, ফোন নম্বর, পুরো ঠিকানা এবং পণ্যের নাম বা কোড পাঠিয়ে দিন।',['how to order','i want to order'],['order','buy','purchase'],'To order, please send your name, phone number, full address and the product name or code.'],
+['Thanks','Customer support',['dhonnobad','ধন্যবাদ'],['thanks','thank','thx','dhonnobad','ধন্যবাদ'],'ধন্যবাদ! আর কিছু জানার থাকলে বলুন।',['thank you','thanks'],['thanks','thank','thx'],'Thank you! Let us know if you need anything else.'],
+['Greeting','Customer support',['salam','assalamualaikum','assalamu alaikum','আসসালামু আলাইকুম','সালাম'],['salam','assalamualaikum','hi','hello','সালাম','আসসালামু','হ্যালো'],'আসসালামু আলাইকুম! কীভাবে সাহায্য করতে পারি?',['hi','hello'],['hi','hello','hey'],'Hello! How can I help you?']
+];
+function packRows(){var o=[];PACK.forEach(function(x){
+o.push({title:x[0],category:x[1],triggers:x[2],word_rules:[{any:x[3]}],parts:[{type:'text',text:x[4]}],language:'bn',approved_reply:x[4]});
+o.push({title:x[0]+' (English)',category:x[1],triggers:x[5],word_rules:[{any:x[6]}],parts:[{type:'text',text:x[7]}],language:'en',approved_reply:x[7]})});return o}
+/* ----- Test box ----- */
+var S={open:false,q:'',n:'Karim'};
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+var st=document.createElement('style');
+st.textContent='#t-rx summary{cursor:pointer;font-weight:750;font-size:14px;list-style:none}#t-rx summary::-webkit-details-marker{display:none}#t-rx .rx-bub{margin-top:8px;padding:10px 12px;border-radius:14px 14px 14px 4px;background:#0d2a1e;border:1px solid #19f39b33;font-size:13px;line-height:1.5;white-space:pre-wrap}#t-rx .rx-ok{color:var(--green)}#t-rx .rx-wn{color:var(--amber)}';
+document.head.appendChild(st);
+function result(rows){if(!S.q.trim())return '';
+var o=match(S.q,rows,'whatsapp'),c={p:o.prod,name:S.n},lgn=o.lang==='bn'?'Bangla (Bangla or Banglish)':'English',h='<div class="rx-sub" style="margin-top:10px">Customer language: <b>'+lgn+'</b> \u00B7 Product found: <b>'+(o.prod?esc(o.prod.name)+' ('+o.prod.price+' Tk)':'none')+'</b></div>';
+var K={send:['rx-ok','\u2705 Would send this reply'],ask_product:['rx-wn','\u2753 Would ask which product'],unsure:['rx-wn','\u26A0 Not sure, you would be flagged'],other_lang:['rx-wn','\u26A0 Found only in the other language, you would be flagged'],none:['rx-wn','\uD83D\uDEAB No match, AI draft or you']}[o.kind];
+h+='<div class="'+K[0]+'" style="margin-top:8px;font-weight:750;font-size:13px">'+K[1]+'</div>';
+if(o.kind==='ask_product')h+='<div class="rx-bub">'+esc(ASK[o.lang])+'</div>';
+if(o.top&&(o.kind==='send'||o.kind==='unsure'||o.kind==='other_lang')){var t=o.top.r;
+render(t,c).forEach(function(x){h+=x.k==='text'||x.k==='product'?'<div class="rx-bub">'+(x.k==='product'?'\uD83D\uDECD ':'')+esc(x.t)+'</div>':'<div class="rx-bub">\uD83D\uDDBC Photo</div>'});
+if(t.review_on&&t.review_on<new Date().toISOString().slice(0,10))h+='<div class="rx-hint rx-wn">Review date has passed for this reply.</div>'}
+if(o.cands.length)h+='<div class="rx-hint" style="margin-top:10px">'+o.cands.map(function(x){return esc(x.r.title||x.r.customer_text||'Reply')+' \u00B7 score '+x.sc+' \u00B7 '+esc(x.why)}).join('<br>')+'</div>';
+return h}
+window.RIX=window.RIX||{};
+window.RIX.lib=function(b,rows){
+var have=rows.some(function(r){return r.title==='Product price'});
+var box=document.createElement('div');
+box.innerHTML='<details class="rx-box" id="rxtd"'+(S.open?' open':'')+'><summary>\uD83E\uDDEA Test a message</summary><div class="rx-hint">Type what a customer might write. Nothing is sent.</div>'+
+'<div style="display:flex;gap:8px;margin-top:10px"><input id="rxtq" placeholder="Dam koto lemon" value="'+esc(S.q)+'" style="flex:1"><button class="rs-btn primary small" id="rxtg">Test</button></div><div id="rxtr">'+result(rows)+'</div></details>'+
+(have?'':'<div class="rx-box"><div class="rx-st">STARTER PACK</div><div class="rx-sub">12 ready replies (Bangla and English): price, delivery charge, payment, how to order, thanks, greeting. They start with Answer automatically off, so you can review and edit them.</div><button class="rs-btn small" id="rxsp" style="margin-top:10px">\u2726 Add starter pack</button></div>');
+b.prepend.apply(b,Array.prototype.slice.call(box.childNodes));
+var d=$('#rxtd');d.addEventListener('toggle',function(){S.open=d.open});
+function go(){S.q=$('#rxtq').value;$('#rxtr').innerHTML=result(rows)}
+$('#rxtg').addEventListener('click',go);$('#rxtq').addEventListener('keydown',function(e){if(e.key==='Enter')go()});
+var sp=$('#rxsp');if(sp)sp.addEventListener('click',async function(){
+if(!confirm('Add 12 starter replies? Answer automatically stays off.'))return;sp.disabled=true;
+try{var now=new Date().toISOString(),q=await sb.from('umb_learned_responses').insert(packRows().map(function(x){return Object.assign(x,{business_id:BIZ,status:'approved',reviewed_by:UID,reviewed_at:now,created_by:UID,channels:ALLCH,auto_answer:false,keep_top:false,suspended:false,customer_text:x.triggers[0]})})).select('id');
+if(q.error)throw q.error;$('#st').style.borderColor='';$('#st').textContent='Starter pack added.';var a=document.querySelector('#rxp .primary');if(a)a.click()}catch(e){sp.disabled=false;err(e)}})};
+window.PR_FOR_RI=function(){return PR};
+window.RIM.pack=packRows;
 })();
   tab('dash');
 var _n=0,_t=setInterval(function(){_n++;var on=!$('#t-dash').hidden;if(on)paintExtras();if(sb&&BIZ){clearInterval(_t);if(on)kpis()}else if(_n>60)clearInterval(_t)},500);
