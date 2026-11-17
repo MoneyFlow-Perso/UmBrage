@@ -237,7 +237,7 @@ input[type=checkbox]{accent-color:#19f39b}
   <nav class="nav" aria-label="Sections">
     <button data-t="inbox"><span class="ico">✉</span> Inbox</button>
         <button data-t="soon:Reply Intelligence"><span class="ico">✦</span> Reply Intelligence</button>
-    <button data-t="soon:Reports & Insights"><span class="ico">✳</span> Insights</button>
+      <button data-t="soon:Ask UmBrage"><span class="ico">✳</span> Ask UmBrage</button>
   </nav>
   <div class="navlabel">SETTINGS</div>
   <nav class="nav"><button data-t="set"><span class="ico">⚙</span> Settings &amp; Data</button></nav>
@@ -1267,6 +1267,7 @@ p_kind:o.kind,p_key:o.key||null,p_category:$('#ovc').value||null,p_district:$('#
 if(my!==DW.tok)return;if(r.error)throw r.error;body(r.data,o)}
 catch(e){if(my===DW.tok)$('#dwb').innerHTML='<div class="dwn" style="color:#fb7185">Could not load the details: '+
 esc((e&&e.message)||e)+'</div>'}}
+  window.openDw=openDw;
 $('#dwx').addEventListener('click',function(){show(false)});
 $('#dws').addEventListener('click',function(){show(false)});
 document.addEventListener('keydown',function(e){if(e.key==='Escape')show(false)});
@@ -2283,6 +2284,190 @@ var l=document.createElement('button');l.type='button';l.className='rs-btn small
 l.addEventListener('click',function(){var n=live(P[i].text||'');if(n===(P[i].text||'')){say('No product name or price found in this box. Write the product name and its price in the text first.',true)}else{P[i].text=n;redraw();say('Done. The product name and price are now filled in live from Products when this is sent.')}});
 bar.append(a,l);bd.append(bar)})}
 new MutationObserver(deco).observe(host,{childList:true});deco()};
+})();
+    /* ===== Ask UmBrage v1: chat, Reports, Access, Activity log (Edge Function umb-ask) ===== */
+(function(){
+var KEYT='soon:Ask UmBrage',PILL='ask',ADM=null,ACC={status:'none',categories:[]},H=[],PREV=null,BUSY=false,TKA=0,MSGS=[],SUGG=null;
+var CATS=[['sales','Sales'],['orders','Orders'],['delivery','Delivery'],['stock','Stock'],['profit','Profit'],['expenses','Expenses'],['customers','Customer details (name, phone, address)']];
+var PL=[['ask','Ask'],['rep','Reports'],['acc','Access'],['log','Activity log']];
+var OC={answered:'#19f39b',refused:'#fbbf24',blocked:'#fb7185',error:'#fb7185'};
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function ago(t){var m=Math.round((Date.now()-new Date(t).getTime())/6e4);return m<1?'just now':m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago'}
+function dh(t){return new Date(t).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
+var LOAD='<div class="ak-box"><small style="color:var(--muted)">Loading...</small></div>';
+var st=document.createElement('style');
+st.textContent=`
+#t-ask input[type=checkbox]{width:18px;height:18px;flex:none;margin:0;padding:0;accent-color:#19f39b}
+#t-ask .ak-pills{display:flex;gap:8px;overflow-x:auto;padding:2px 0 6px;margin:4px 0 12px;scrollbar-width:none}
+#t-ask .ak-pills::-webkit-scrollbar{display:none}
+#t-ask .ak-pills button{white-space:nowrap;flex:none}
+#t-ask .ak-box{padding:14px;margin-bottom:12px;border-radius:var(--radius);border:1px solid var(--line);background:linear-gradient(145deg,#11281fdb,#081711e8);box-shadow:0 18px 55px #0005,inset 0 1px #ffffff08;animation:rs-rise .4s ease both}
+#t-ask .ak-eb{font-size:10px;letter-spacing:1.8px;color:var(--green);font-weight:800;margin-bottom:4px}
+#t-ask .ak-me{margin:0 0 12px auto;width:fit-content;max-width:85%;padding:10px 13px;border-radius:14px 14px 4px 14px;border:1px solid #19f39b55;background:#19f39b14;font-size:14px;line-height:1.45;animation:rs-rise .3s ease both}
+#t-ask .ak-a{font-size:14px;line-height:1.55;white-space:pre-wrap}
+#t-ask .ak-src{margin-top:10px;font-size:11px;color:var(--muted);line-height:1.5}
+#t-ask .ak-warn{margin-top:8px;padding:8px 10px;border-radius:10px;border:1px solid #fbbf2455;background:#fbbf2412;font-size:12px;line-height:1.45}
+#t-ask .ak-tw{margin-top:10px;overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+#t-ask table{width:100%;border-collapse:collapse;font-size:12.5px}
+#t-ask th{text-align:left;padding:8px 10px;color:var(--muted);font-weight:700;font-size:11px;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--line)}
+#t-ask td{padding:8px 10px;border-bottom:1px solid #ffffff0a;white-space:nowrap}
+#t-ask tr.tp{cursor:pointer}
+#t-ask tr.tp:hover td{background:#19f39b10}
+#t-ask .ak-chart{height:190px;margin-top:10px}
+#t-ask .ak-chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+#t-ask .ak-in{display:flex;gap:8px;margin-top:6px}
+#t-ask .ak-in input{flex:1;min-width:0}
+#t-ask .ak-tag{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;border:1px solid var(--line);white-space:nowrap}
+`;
+document.head.appendChild(st);
+var sec=document.createElement('section');sec.id='t-ask';sec.hidden=true;
+sec.innerHTML='<div class="ak-pills" id="akp"></div><div id="akb"></div>';
+$('#t-soon').after(sec);
+
+function pills(){var r=$('#akp');r.replaceChildren();
+PL.forEach(function(x){if((x[0]==='acc'||x[0]==='log')&&ADM===false)return;
+var b=document.createElement('button');b.className='rs-btn small'+(x[0]===PILL?' primary':'');b.textContent=x[1];
+b.addEventListener('click',function(){PILL=x[0];pills();show()});r.append(b)})}
+async function whoami(){if(ADM!==null)return;
+try{var r=await sb.rpc('is_business_admin',{p_business_id:BIZ});ADM=!!(r&&r.data)}catch(e){ADM=false}
+pills()}
+async function myAccess(){if(ADM)return{status:'admin',categories:[]};
+var r=await sb.from('umb_ask_access').select('status,categories').eq('business_id',BIZ).eq('user_id',UID).maybeSingle();
+if(r.error)throw r.error;return r.data||{status:'none',categories:[]}}
+async function show(){var my=++TKA;
+if(!sb||!BIZ){$('#akb').innerHTML='<div class="ak-box">Sign in first (Settings &amp; Data).</div>';return}
+await whoami();if(my!==TKA)return;
+if(PILL==='ask')return viewAsk(my);if(PILL==='rep')return viewRep(my);
+if(PILL==='acc')return viewAcc(my);return viewLog(my)}
+
+/* ---------- Ask ---------- */
+async function viewAsk(my){var b=$('#akb');b.innerHTML=LOAD;
+try{var a=await myAccess();if(my!==TKA)return;ACC=a}catch(e){b.innerHTML='<div class="ak-box">Could not check access: '+esc((e&&e.message)||e)+'</div>';return}
+if(ACC.status!=='admin'&&ACC.status!=='approved')return viewReq(b);
+if(SUGG===null)SUGG=defSugg();
+b.innerHTML='<div class="ak-box"><div class="ak-eb">ASK UMBRAGE</div><div style="font-size:12px;color:var(--muted);line-height:1.5">Ask about sales, orders, delivery, stock, profit and expenses in English, Bangla or Banglish. It only reads your data and can never change it.</div></div>'+
+'<div id="akt"></div><div class="ak-chips" id="akc"></div>'+
+'<div class="ak-in"><input id="akq" placeholder="Ask a question..." maxlength="400" autocomplete="off"><button class="rs-btn primary" id="aks">Send</button></div>';
+drawT();drawC()}
+function defSugg(){var c=ACC.status==='admin'?['sales','orders','stock','delivery','profit']:(ACC.categories||[]),o=[];
+if(c.indexOf('sales')>-1)o.push('Sales this week');if(c.indexOf('orders')>-1)o.push('Orders today');
+if(c.indexOf('stock')>-1)o.push('Which items are low in stock?');if(c.indexOf('delivery')>-1)o.push('Delivery status this month');
+if(c.indexOf('profit')>-1)o.push('Profit this month');return o.slice(0,4)}
+function viewReq(b){var s=ACC.status,m={none:'Ask UmBrage answers questions about the business data. The admin decides what you can see.',pending:'Your request is waiting for the admin. The chat appears here once it is approved.',rejected:'The admin did not approve access. You can ask again.',revoked:'Your access was switched off by the admin. You can ask again.'}[s]||'';
+b.innerHTML='<div class="ak-box"><div class="ak-eb">ASK UMBRAGE</div><div style="font-size:14px;line-height:1.5">'+esc(m)+'</div>'+
+(s==='pending'?'':'<div style="margin-top:12px"><button class="rs-btn primary" id="akreq">Request access</button></div>')+'</div>'}
+async function request(){try{var q;
+if(ACC.status==='none')q=await sb.from('umb_ask_access').insert({business_id:BIZ,user_id:UID,status:'pending',categories:[]}).select('id');
+else q=await sb.from('umb_ask_access').update({status:'pending',categories:[]}).eq('business_id',BIZ).eq('user_id',UID).select('id');
+if(q.error)throw q.error;if(!q.data||!q.data.length)throw new Error('The request could not be sent.');
+$('#st').style.borderColor='';$('#st').textContent='Request sent to the admin.';show()}catch(e){err(e)}}
+function tbl(d,i){if(!d.columns||!d.rows||!d.rows.length)return '';var tap=canTap(d);
+return '<div class="ak-tw"><table><thead><tr>'+d.columns.map(function(c){return '<th>'+esc(c)+'</th>'}).join('')+'</tr></thead><tbody>'+
+d.rows.map(function(r,j){return '<tr'+(tap?' class="tp" data-m="'+i+'" data-r="'+j+'"':'')+'>'+r.map(function(c){return '<td>'+esc(c)+'</td>'}).join('')+'</tr>'}).join('')+'</tbody></table></div>'+
+(tap?'<div class="ak-src" style="margin-top:6px">Tap a row for details. The details follow the period chosen on Overview.</div>':'')}
+function canTap(d){if(!window.openDw)return false;var c=d.columns&&d.columns[0];
+return c==='Day'||c==='District'||c==='Product'||d.tool==='orders_list'||d.tool==='sales_summary'||d.tool==='profit_summary'}
+function tapAct(d,r){var c=d.columns[0],v=String(r[0]);
+if(c==='Day')return openDw({kind:'day',key:v,title:v});
+if(c==='District')return openDw({kind:'district',key:v,title:v});
+if(c==='Product')return openDw({kind:'product',key:v,title:v});
+if(d.tool==='orders_list')return tab('ord');
+if(d.tool==='sales_summary')return openDw({kind:'all',mode:'sales',title:'Total sales'});
+if(d.tool==='profit_summary')return openDw({kind:'all',mode:'profit',title:'Profit'})}
+function drawT(){var t=$('#akt');if(!t)return;
+t.querySelectorAll('.ak-chart').forEach(function(el){if(window.echarts){var o=echarts.getInstanceByDom(el);if(o)o.dispose()}});
+t.innerHTML=MSGS.map(function(m,i){
+if(m.role==='me')return '<div class="ak-me">'+esc(m.text)+'</div>';
+if(m.role==='wait')return '<div class="ak-box"><small style="color:var(--muted)">Thinking...</small></div>';
+var d=m.d||{};
+return '<div class="ak-box"><div class="ak-a">'+esc(d.answer)+'</div>'+
+(d.chart&&window.echarts?'<div class="ak-chart" id="akg'+i+'"></div>':'')+tbl(d,i)+
+(d.warnings||[]).map(function(w){return '<div class="ak-warn">'+esc(w)+'</div>'}).join('')+
+(d.ok?'<div class="ak-src">'+esc(d.source)+' \u00B7 '+esc(d.period)+(d.pii?' \u00B7 <span class="ak-tag" style="color:#fbbf24">customer details shown</span>':'')+'<br>'+esc(d.basis)+'</div>':'')+'</div>'}).join('');
+drawCharts();var q=$('#akq');if(q&&MSGS.length)q.scrollIntoView({block:'nearest'})}
+function drawCharts(){if(!window.echarts)return;
+MSGS.forEach(function(m,i){if(m.role!=='ai'||!m.d||!m.d.chart)return;var el=document.getElementById('akg'+i);if(!el)return;
+var c=m.d.chart,ch=echarts.init(el),line=c.type==='line';
+ch.setOption({grid:{left:8,right:8,top:12,bottom:4,containLabel:true},tooltip:{trigger:'axis'},
+xAxis:{type:'category',data:c.labels,axisLabel:{color:'#8aa699',fontSize:10,hideOverlap:true},axisLine:{lineStyle:{color:'#ffffff1a'}}},
+yAxis:{type:'value',axisLabel:{color:'#8aa699',fontSize:10},splitLine:{lineStyle:{color:'#ffffff0d'}}},
+series:[{type:line?'line':'bar',data:c.values,smooth:true,symbol:'none',barMaxWidth:26,itemStyle:{color:'#19f39b',borderRadius:[5,5,0,0]},lineStyle:{color:'#19f39b',width:2},areaStyle:line?{color:'#19f39b22'}:undefined}]})})}
+function drawC(){var c=$('#akc');if(!c)return;c.replaceChildren();
+(SUGG||[]).forEach(function(s){var b=document.createElement('button');b.className='rs-btn small';b.textContent=s;
+b.addEventListener('click',function(){send(s)});c.append(b)})}
+async function send(q){q=String(q||'').trim();if(!q||BUSY)return;BUSY=true;
+MSGS.push({role:'me',text:q});MSGS.push({role:'wait'});var inp=$('#akq');if(inp)inp.value='';drawT();
+var d;
+try{var r=await sb.functions.invoke('umb-ask',{body:{business_id:BIZ,question:q,history:H.slice(-3),prev:PREV}});
+if(r.error){var m=r.error.message;try{var j=await r.error.context.json();if(j&&j.answer)m=j.answer}catch(x){}d={ok:false,answer:m}}
+else d=r.data||{ok:false,answer:'No answer came back.'}}
+catch(e){d={ok:false,answer:(e&&e.message)||String(e)}}
+MSGS.pop();MSGS.push({role:'ai',d:d});
+if(d.ok){PREV={tool:d.tool,args:d.args};H.push({q:q,a:d.answer});if(H.length>6)H.shift();
+SUGG=d.tool==='stock_levels'?[]:(d.language==='en'?['And last month?','And last 30 days?','And today?']:['আর গত মাসে?','আর গত ৩০ দিনে?','আর আজকে?'])}
+else if(d.suggestions&&d.suggestions.length)SUGG=d.suggestions;
+BUSY=false;
+if(d.reason==='no_access'){ACC={status:d.status||'none',categories:[]};MSGS=[];show();return}
+drawT();drawC()}
+
+/* ---------- Reports ---------- */
+async function viewRep(my){var b=$('#akb');b.innerHTML=LOAD;
+try{var r=await sb.from('umb_ask_saved').select('id,title,question,as_of,created_at,result,created_by').eq('business_id',BIZ).order('created_at',{ascending:false}).limit(30);
+if(my!==TKA)return;if(r.error)throw r.error;
+var h='<div class="ak-box"><div class="ak-eb">REPORTS</div><div style="font-size:12px;color:var(--muted);line-height:1.5">Answers you save from Ask UmBrage will be kept here. The AI sales analysis (totals only) is still available.</div><div style="margin-top:12px"><button class="rs-btn" data-go="soon:Reports & Insights">\u2733 Open sales analysis</button></div></div>';
+if(!r.data.length)h+='<div class="ak-box"><small style="color:var(--muted)">No saved answers yet.</small></div>';
+h+=r.data.map(function(x){var res=x.result||{};
+return '<div class="ak-box" data-sv="'+esc(x.id)+'"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>'+esc(x.title)+'</b><button class="rs-btn small danger" data-del="'+esc(x.id)+'">Delete</button></div><div class="ak-src" style="margin-top:4px">'+esc(x.question||'')+' \u00B7 '+dh(x.as_of||x.created_at)+'</div>'+
+(res.columns&&res.rows?tbl({columns:res.columns,rows:res.rows},-1):'')+'</div>'}).join('');
+b.innerHTML=h}catch(e){if(my===TKA)b.innerHTML='<div class="ak-box">Could not load: '+esc((e&&e.message)||e)+'</div>'}}
+
+/* ---------- Access (admin) ---------- */
+function accCard(x){var on=x.categories||[],s=x.status,col={pending:'#fbbf24',approved:'#19f39b',rejected:'#fb7185',revoked:'#fb7185'}[s]||'#8aa699',bt='';
+if(s==='pending')bt='<button class="rs-btn small primary" data-a="approved">Approve</button><button class="rs-btn small danger" data-a="rejected">Reject</button>';
+else if(s==='approved')bt='<button class="rs-btn small primary" data-a="approved">Save changes</button><button class="rs-btn small danger" data-a="revoked">Revoke</button>';
+else bt='<button class="rs-btn small primary" data-a="approved">Approve again</button>';
+return '<div class="ak-box" data-u="'+esc(x.user_id)+'"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>Staff \u00B7 '+esc(String(x.user_id).slice(0,8))+'</b><span class="ak-tag" style="color:'+col+'">'+esc(s)+'</span></div>'+
+'<div class="ak-src" style="margin-top:4px">Requested '+ago(x.requested_at)+(x.decided_at?' \u00B7 decided '+ago(x.decided_at):'')+'</div>'+
+'<div style="margin-top:10px;display:grid;gap:9px">'+CATS.map(function(c){return '<label style="display:flex;gap:10px;align-items:center;font-size:13px"><input type="checkbox" class="akcat" value="'+c[0]+'"'+(on.indexOf(c[0])>-1?' checked':'')+'>'+esc(c[1])+'</label>'}).join('')+'</div>'+
+'<div class="ak-src">Customer details lets this person see real names, phones and addresses in answers. Keep it off unless they need it.</div>'+
+'<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'+bt+'</div></div>'}
+async function viewAcc(my){var b=$('#akb');b.innerHTML=LOAD;
+try{var r=await sb.from('umb_ask_access').select('*').eq('business_id',BIZ).neq('user_id',UID).order('requested_at',{ascending:false});
+if(my!==TKA)return;if(r.error)throw r.error;
+b.innerHTML='<div class="ak-box"><div class="ak-eb">ACCESS</div><div style="font-size:12px;color:var(--muted);line-height:1.5">You (the admin) always see everything. Staff must ask first, then you choose what each person may see. They can never change data.</div></div>'+
+(r.data.length?r.data.map(accCard).join(''):'<div class="ak-box"><small style="color:var(--muted)">No staff have asked for access yet.</small></div>')}
+catch(e){if(my===TKA)b.innerHTML='<div class="ak-box">Could not load: '+esc((e&&e.message)||e)+'</div>'}}
+async function decide(card,a){var u=card.dataset.u,cats=a==='approved'?Array.prototype.map.call(card.querySelectorAll('.akcat:checked'),function(c){return c.value}):[];
+if(a==='approved'&&!cats.length){err({message:'Pick at least one thing this person may see.'});return}
+if(a==='approved'&&cats.indexOf('customers')>-1&&!confirm('This person will be able to see customer names, phones and addresses. Allow it?'))return;
+try{var q=await sb.from('umb_ask_access').update({status:a,categories:cats,decided_by:UID,decided_at:new Date().toISOString()}).eq('business_id',BIZ).eq('user_id',u).select('id');
+if(q.error)throw q.error;if(!q.data||!q.data.length)throw new Error('Not saved. Only the admin can change access.');
+$('#st').style.borderColor='';$('#st').textContent='Access updated.';show()}catch(e){err(e)}}
+
+/* ---------- Activity log (admin) ---------- */
+async function viewLog(my){var b=$('#akb');b.innerHTML=LOAD;
+try{var r=await sb.from('umb_ask_log').select('*').eq('business_id',BIZ).order('asked_at',{ascending:false}).limit(50);
+if(my!==TKA)return;if(r.error)throw r.error;
+b.innerHTML='<div class="ak-box"><div class="ak-eb">ACTIVITY LOG</div><div style="font-size:12px;color:var(--muted);line-height:1.5">Who asked what and when. The latest 50 are shown. Nobody can edit or delete these entries.</div></div>'+
+(r.data.length?r.data.map(function(x){var who=x.user_id===UID?'You':'Staff \u00B7 '+String(x.user_id||'').slice(0,8);
+return '<div class="ak-box" style="padding:12px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span class="ak-src" style="margin:0">'+dh(x.asked_at)+' \u00B7 '+esc(who)+'</span><span class="ak-tag" style="color:'+(OC[x.outcome]||'#8aa699')+'">'+esc(x.outcome)+'</span></div>'+
+'<div style="margin-top:6px;font-size:13px;line-height:1.45">'+esc(x.question)+'</div>'+
+'<div class="ak-src" style="margin-top:6px">'+(x.tool?esc(x.tool)+' \u00B7 ':'')+(x.rows_returned!=null?x.rows_returned+' rows':'')+(x.reason?' \u00B7 '+esc(x.reason):'')+(x.pii_shown?' \u00B7 <b style="color:#fbbf24">customer details shown</b>':'')+'</div></div>'}).join(''):'<div class="ak-box"><small style="color:var(--muted)">No questions yet.</small></div>')}
+catch(e){if(my===TKA)b.innerHTML='<div class="ak-box">Could not load: '+esc((e&&e.message)||e)+'</div>'}}
+
+/* ---------- events ---------- */
+sec.addEventListener('click',function(e){var t=e.target;
+if(t.closest('#aks')){send($('#akq').value);return}
+if(t.closest('#akreq')){request();return}
+var a=t.closest('button[data-a]');if(a){decide(a.closest('[data-u]'),a.dataset.a);return}
+var d=t.closest('button[data-del]');if(d){if(!confirm('Delete this saved answer?'))return;
+sb.from('umb_ask_saved').delete().eq('id',d.dataset.del).then(function(q){if(q.error)err(q.error);else show()});return}
+var tr=t.closest('tr.tp');if(tr){var m=MSGS[+tr.dataset.m];if(m&&m.d&&m.d.rows)tapAct(m.d,m.d.rows[+tr.dataset.r])}});
+sec.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.target.id==='akq'){e.preventDefault();send(e.target.value)}});
+var _tAk=tab;
+tab=function(t){var s=$('#t-ask');
+if(t===KEYT){_tAk(t);var so=$('#t-soon');if(so)so.hidden=true;s.hidden=false;$('#pt').textContent='Ask UmBrage';pills();show();return}
+s.hidden=true;_tAk(t)};
 })();
   tab('dash');
   /* ===== Reply Intelligence v6: Quality Lab pill ===== */
