@@ -283,7 +283,7 @@ input[type=checkbox]{accent-color:#19f39b}
  <div class="rs-grid tiles" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr))"><div class="rs-card p" id="dpl"></div><div class="rs-card p" id="dls"></div></div>
 </section>
 <section id="t-crm" hidden><iframe id="crmf" title="CRM"></iframe></section>
-<section id="t-soon" hidden><div class="card"><b id="sn"></b><br><small>This module is planned. It will open here in the same design.</small></div></section>
+<section id="t-soon" hidden><div class="card"><b id="sns"></b><br><small>This module is planned. It will open here in the same design.</small></div></section>
 
 <section id="t-set" hidden>
   <div class="card">
@@ -1319,7 +1319,7 @@ if(!k){X.forEach(function(x){var e=$('#t-'+x);if(e)e.hidden=true});_tab3(t);retu
 C.forEach(function(x){var e=$('#t-'+x);if(e)e.hidden=true});X.forEach(function(x){$('#t-'+x).hidden=x!==k});
 document.querySelectorAll('[data-t]').forEach(function(b){b.classList.toggle('active',b.dataset.t===s)});
 if(k==='dash'){$('#pt').textContent='Overview';$('#hc').textContent=sb?'':'Not signed in yet. Open Settings & Data to sign in.';paintBanner();paintExtras();kpis()}
-else if(k==='soon'){$('#pt').textContent=s.slice(5);$('#sn').textContent=s.slice(5)}
+else if(k==='soon'){$('#pt').textContent=s.slice(5);$('#sns').textContent=s.slice(5)}
 else{$('#pt').textContent='CRM / '+(CRMT[s.slice(4)]||s.slice(4));crmOpen(s.slice(4))}};
 document.addEventListener('click',function(e){var c=e.target.closest('[data-go]');if(c)tab(c.dataset.go)});
 var _t4=tab;tab=function(t){_t4(t);var e=document.querySelector('main section[id^="t-"]:not([hidden])');if(e){e.classList.remove('rs-page');void e.offsetWidth;e.classList.add('rs-page')}};
