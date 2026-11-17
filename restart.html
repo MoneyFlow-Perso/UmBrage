@@ -2249,7 +2249,7 @@ window.RIX=window.RIX||{};
 window.RIX.ed=function(P,redraw){
 var add=$('#rxam'),host=$('#rxpt');if(!add||!add.parentNode||!host)return;
 var busy=false;
-var bt=document.createElement('button');bt.type='button';bt.className='rs-btn small';bt.id='rxai';bt.textContent='\u2728 AI draft';add.parentNode.append(bt);
+var bt=document.createElement('button');bt.type='button';bt.className='rs-btn small';bt.id='rxai';bt.textContent='\u2728 AI draft';
 var out=document.createElement('div');out.id='rxao';$('#rxfs').after(out);
 function say(h,w){out.innerHTML=h?'<div class="rx-hint'+(w?' rx-wn':'')+'" style="margin-top:8px">'+h+'</div>':''}
 function ask(){var t=($('#rxg').value||'').split('\n').map(function(s){return s.trim()}).filter(Boolean)[0];
