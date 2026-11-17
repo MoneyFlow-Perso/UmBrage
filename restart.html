@@ -235,7 +235,7 @@ input[type=checkbox]{accent-color:#19f39b}
   </nav>
   <div class="navlabel">AI</div>
   <nav class="nav" aria-label="Sections">
-    <button data-t="inbox"><span class="ico">✉</span> AI Reply Drafts</button>
+    <button data-t="inbox"><span class="ico">✉</span> Inbox</button>
         <button data-t="soon:Reply Intelligence"><span class="ico">✦</span> Reply Intelligence</button>
     <button data-t="soon:Reports & Insights"><span class="ico">✳</span> Insights</button>
   </nav>
@@ -244,7 +244,7 @@ input[type=checkbox]{accent-color:#19f39b}
   <div class="sidefoot" id="sf">LOCAL DEMO STORAGE<br><span style="color:var(--green)">●</span> This device</div>
 </aside>
 <main class="main">
-<header class="topbar"><div><div class="eyebrow">AI SALES AGENT</div><h1 id="pt">AI Reply Drafts</h1></div><div class="top-actions"><span class="pill">● Demo mode</span><button class="pri" id="sim">+ Simulate message</button></div></header>
+<header class="topbar"><div><div class="eyebrow">AI SALES AGENT</div><h1 id="pt">Inbox</h1></div><div class="top-actions"><span class="pill">● Demo mode</span><button class="pri" id="sim">+ Simulate message</button></div></header>
 <div class="notice" id="st"></div>
 <section class="ms" id="m" aria-label="Summary"></section>
 
@@ -502,7 +502,7 @@ async function regen(c){if(c.fk){await followDraft(c);return}
  var d=await drafter(c);
  if(sb)await dropOpenDrafts(c);
  c.draft=d.text;persist();render()}catch(e){err(e)}finally{delete BUSY[c.id]}}
-async function saveExample(id){try{var r=await sb.rpc("umb_learn_from_message",{p_message:id});if(r.error)throw r.error;SV[id]=1;$("#st").style.borderColor="";$("#st").textContent="Saved. Open Learning to review it. Only approved examples reach the AI.";renderChat()}catch(e){err(e)}}
+async function saveExample(id){try{var r=await sb.rpc("umb_learn_from_message",{p_message:id});if(r.error)throw r.error;SV[id]=1;$("#st").style.borderColor="";$("#st").textContent="Saved. Open Reply Intelligence, then Suggestions, to review it.. Only approved examples reach the AI.";renderChat()}catch(e){err(e)}}
 var LG={bn:"Bangla",banglish:"Banglish",en:"English"};
 function learnCard(x){
  var ta=h("textarea",{rows:"3","aria-label":"Approved reply"}),lg=h("select",{"aria-label":"Language"},Object.keys(LG).map(function(k){return h("option",{value:k},LG[k])}));
@@ -604,7 +604,7 @@ function renderChat(){
  feed.scrollTop=feed.scrollHeight}
 
 function tab(t){["inbox","camp","set","prod","test","learn"].forEach(function(s){$("#t-"+s).hidden=s!==t});
- document.querySelectorAll("[data-t]").forEach(function(b){b.classList.toggle("active",b.dataset.t===t)});$("#pt").textContent={inbox:"AI Reply Drafts",camp:"Campaign Copy",prod:"Products",test:"Test set",learn:"Learning",set:"Settings & Data"}[t];
+ document.querySelectorAll("[data-t]").forEach(function(b){b.classList.toggle("active",b.dataset.t===t)});$("#pt").textContent={inbox:"Inbox",camp:"Campaign Copy",prod:"Products",test:"Test set",learn:"Learning",set:"Settings & Data"}[t];
  if(t==="prod")renderProd();if(t==="test")renderTest();if(t==="learn")renderLearn();
  if(t==="camp")$("#cp").replaceChildren.apply($("#cp"),prods().map(function(p){return h("option",{},p.n)}));
  if(t==="set"){$("#kp").value=KB.products;$("#ks").value=KB.ship;$("#kh").value=KB.hours;$("#kt").value=KB.tone;$("#ksk").value=KB.stk;$("#kzk").value=KB.szk;$("#ku").value=KB.url;$("#cu").value=CFG.url||"";$("#al").value=sb&&KB.lim!=null?KB.lim:200;$("#au").textContent=sb?usageText():"Applies when connected to Supabase.";$("#ck").value=CFG.key||"";$("#fh").value=KB.fh||4;$("#ex").value=JSON.stringify(api.getState(),null,1)}}
