@@ -536,7 +536,7 @@ async function runCase(t){
  return u.error?{stop:u.error.message}:{}}
 async function runList(a){for(var i=0;i<a.length;i++){$('#st').textContent='Running test '+(i+1)+' of '+a.length+(i?' (pausing between calls for free-tier rate limits)':'')+'...';if(i)await new Promise(function(ok){setTimeout(ok,12500)});var r=await runCase(a[i]);if(r.stop){await renderTest();err(r.stop);return}}await renderTest();$('#st').textContent='Test run finished. '+usageText()}
 async function addCases(rows){var r=await sb.from('umb_test_cases').insert(rows.map(function(x){return Object.assign({business_id:BIZ},x)}));if(r.error)err(r.error);else renderTest()}
-async function renderTest(){var p=$('#tl');
+async function renderTest(){var p=(window.QLT&&document.body.contains(window.QLT))?window.QLT:$('#tl');
  if(!sb){p.replaceChildren(h('div',{class:'notice'},'Connect Supabase in Settings & Data to use the test set.'));return}
  var r=await sb.from('umb_test_cases').select('*').eq('business_id',BIZ).order('created_at');if(r.error){err(r.error);return}TC=r.data;
  var I=function(id,l){return h('div',{},h('label',{},l),h('input',{id:id}))};
@@ -2244,6 +2244,15 @@ if(!a||!c){err({message:'Write both holding replies.'});return}
 try{await save({holding_reply:a+'\n---\n'+c});msg('Holding replies saved.');aset(b)}catch(e){err(e)}})}
 })();
   tab('dash');
+  /* ===== Reply Intelligence v6: Quality Lab pill ===== */
+(function(){
+var prev=window.RIX&&window.RIX.pill;
+window.RIX=window.RIX||{};
+window.RIX.pill=function(pill,b,edit){
+if(pill!=='qlab')return prev?prev(pill,b,edit):false;
+b.innerHTML='<div class="rx-hero"><div class="rx-eb">QUALITY LAB</div><div class="rx-h">Test set</div><div class="rx-sub">Fixed customer messages the agent must handle well. Run them after any change.</div></div><div id="qltb"></div>';
+window.QLT=b.querySelector('#qltb');renderTest();return true};
+})();
 var _n=0,_t=setInterval(function(){_n++;var on=!$('#t-dash').hidden;if(on)paintExtras();if(sb&&BIZ){clearInterval(_t);if(on)kpis()}else if(_n>60)clearInterval(_t)},500);
 
 })();
