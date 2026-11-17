@@ -2467,6 +2467,47 @@ var _tAk=tab;
 tab=function(t){var s=$('#t-ask');
 if(t===KEYT){_tAk(t);var so=$('#t-soon');if(so)so.hidden=true;s.hidden=false;$('#pt').textContent='Ask UmBrage';pills();show();return}
 s.hidden=true;_tAk(t)};
+ /* ===== Ask UmBrage v2: PDF preview + download ===== */
+var st2=document.createElement('style');
+st2.textContent='#pdfov{position:fixed;inset:0;z-index:9999;background:#000d;display:flex;flex-direction:column}#pdfov .pb{display:flex;gap:8px;align-items:center;padding:10px 12px;background:#081711;border-bottom:1px solid var(--line)}#pdfov .pb span{flex:1;font-size:12px;color:var(--muted);text-align:center}#pdfov .ps{flex:1;overflow:auto;padding:12px}#pdfh{margin:0 auto;overflow:hidden;background:#fff;box-shadow:0 10px 40px #0008}';
+document.head.appendChild(st2);
+function lib(src,ok){return new Promise(function(res,rej){if(ok())return res();var s=document.createElement('script');s.src=src;s.onload=function(){ok()?res():rej(new Error('Could not load the PDF tool.'))};s.onerror=function(){rej(new Error('Could not load the PDF tool. Check your internet.'))};document.head.appendChild(s)})}
+function chartImg(c){return new Promise(function(res){if(!c||!window.echarts)return res('');try{var el=document.createElement('div');el.style.cssText='position:fixed;left:-9999px;top:0;width:640px;height:230px';document.body.appendChild(el);var ch=echarts.init(el);var line=c.type==='line';
+ch.setOption({animation:false,backgroundColor:'#fff',grid:{left:8,right:12,top:14,bottom:6,containLabel:true},xAxis:{type:'category',data:c.labels,axisLabel:{color:'#444',fontSize:11,hideOverlap:true},axisLine:{lineStyle:{color:'#bbb'}}},yAxis:{type:'value',axisLabel:{color:'#444',fontSize:11},splitLine:{lineStyle:{color:'#e5e5e5'}}},series:[{type:line?'line':'bar',data:c.values,smooth:true,symbol:'none',barMaxWidth:28,itemStyle:{color:'#0f9d6b'},lineStyle:{color:'#0f9d6b',width:2},areaStyle:line?{color:'#0f9d6b22'}:undefined}]});
+var u=ch.getDataURL({pixelRatio:2,backgroundColor:'#fff'});ch.dispose();el.remove();res(u)}catch(e){res('')}})}
+function pdfHtml(q,d,img){var T='<div style="width:720px;box-sizing:border-box;padding:44px 48px;background:#fff;color:#111;font-family:\'Noto Sans Bengali\',\'Segoe UI\',system-ui,sans-serif;font-size:14px;line-height:1.55">';
+T+='<div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #0f9d6b;padding-bottom:10px"><div><div style="font-size:11px;letter-spacing:2px;font-weight:800;color:#0f9d6b">UMBRAGE</div><div style="font-size:20px;font-weight:800;margin-top:2px">Business answer</div></div><div style="font-size:11px;color:#666;text-align:right">Prepared '+esc(dh(new Date()))+'<br>Dhaka time</div></div>';
+if(q)T+='<div style="margin-top:18px;font-size:11px;letter-spacing:1px;color:#666;font-weight:700">QUESTION</div><div style="font-size:15px;font-weight:600;margin-top:2px">'+esc(q)+'</div>';
+T+='<div style="margin-top:16px;font-size:11px;letter-spacing:1px;color:#666;font-weight:700">ANSWER</div><div style="white-space:pre-wrap;margin-top:2px">'+esc(d.answer)+'</div>';
+if(img)T+='<img src="'+img+'" style="display:block;width:100%;margin-top:14px">';
+if(d.columns&&d.rows&&d.rows.length){var th='padding:6px 8px;border:1px solid #d9e2dd;text-align:left;font-size:12px;';
+T+='<table style="width:100%;border-collapse:collapse;margin-top:14px"><thead><tr>'+d.columns.map(function(c){return '<th style="'+th+'background:#eef4f1;font-weight:700">'+esc(c)+'</th>'}).join('')+'</tr></thead><tbody>'+d.rows.map(function(r){return '<tr>'+r.map(function(c){return '<td style="'+th+'">'+esc(c)+'</td>'}).join('')+'</tr>'}).join('')+'</tbody></table>'}
+(d.warnings||[]).forEach(function(w){T+='<div style="margin-top:12px;padding:8px 10px;border:1px solid #e0b84a;background:#fff8e1;font-size:12px">'+esc(w)+'</div>'});
+T+='<div style="margin-top:18px;padding-top:10px;border-top:1px solid #ddd;font-size:11px;color:#666;line-height:1.5">'+esc(d.source||'')+(d.period?' \u00B7 '+esc(d.period):'')+(d.basis?'<br>'+esc(d.basis):'')+(d.pii?'<br><b style="color:#b45309">Contains customer details. Handle with care.</b>':'')+'<br>Read-only figures from UmBrage. Items marked (Guess) are estimates.</div></div>';
+return T}
+async function openPdf(i){var m=MSGS[i];if(!m||!m.d||!m.d.ok)return;var d=m.d,q=(MSGS[i-1]&&MSGS[i-1].role==='me')?MSGS[i-1].text:'';
+if(d.pii&&!confirm('This answer shows customer details (names, phones). The PDF will contain them. Create it?'))return;
+var old=$('#pdfov');if(old)old.remove();
+var img=d.chart?await chartImg(d.chart):'';
+var ov=document.createElement('div');ov.id='pdfov';
+ov.innerHTML='<div class="pb"><button class="rs-btn small" id="pdfx">Close</button><span id="pdfm">Preview</span><button class="rs-btn primary small" id="pdfd">Download PDF</button></div><div class="ps"><div id="pdfh"><div id="pdfw" style="width:720px;transform-origin:top left"></div></div></div>';
+document.body.appendChild(ov);
+var w=ov.querySelector('#pdfw'),hh=ov.querySelector('#pdfh');w.innerHTML=pdfHtml(q,d,img);
+var sc=Math.min(1,(ov.clientWidth-24)/720);w.style.transform='scale('+sc+')';hh.style.width=Math.round(720*sc)+'px';hh.style.height=Math.round(w.offsetHeight*sc)+'px';
+ov.querySelector('#pdfx').onclick=function(){ov.remove()};
+ov.querySelector('#pdfd').onclick=async function(){var bt=this,msg=ov.querySelector('#pdfm');bt.disabled=true;msg.textContent='Preparing PDF...';
+try{await lib('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',function(){return !!window.html2canvas});
+await lib('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',function(){return !!(window.jspdf&&window.jspdf.jsPDF)});
+var host=document.createElement('div');host.style.cssText='position:fixed;left:-10000px;top:0;width:720px';host.innerHTML=pdfHtml(q,d,img);document.body.appendChild(host);
+var cv;try{cv=await html2canvas(host.firstChild,{scale:2,backgroundColor:'#ffffff',useCORS:true})}finally{host.remove()}
+var pdf=new window.jspdf.jsPDF({unit:'mm',format:'a4',compress:true}),pw=210,ph=297,ih=cv.height*pw/cv.width,pages=Math.max(1,Math.ceil(ih/ph-0.01)),data=cv.toDataURL('image/jpeg',0.92);
+for(var p=0;p<pages;p++){if(p)pdf.addPage();pdf.addImage(data,'JPEG',0,-p*ph,pw,ih,'pg')}
+pdf.save('UmBrage-'+(d.tool||'answer')+'-'+new Date().toISOString().slice(0,10)+'.pdf');msg.textContent='PDF saved. Check your downloads.'}
+catch(e){msg.textContent='Problem: '+((e&&e.message)||e)}
+bt.disabled=false}}
+function addPdf(){var t=$('#akt');if(!t)return;Array.prototype.forEach.call(t.children,function(el,i){var m=MSGS[i];if(m&&m.role==='ai'&&m.d&&m.d.ok&&!el.querySelector('[data-pdf]'))el.insertAdjacentHTML('beforeend','<div style="margin-top:10px"><button class="rs-btn small" data-pdf="'+i+'">\u2B07 PDF</button></div>')})}
+var _dT=drawT;drawT=function(){_dT();addPdf()};
+sec.addEventListener('click',function(e){var b=e.target.closest('button[data-pdf]');if(b)openPdf(+b.dataset.pdf)}); 
 })();
   /* ===== Remember last page + pill (v8) ===== */
 (function(){
