@@ -2327,7 +2327,7 @@ $('#t-soon').after(sec);
 function pills(){var r=$('#akp');r.replaceChildren();
 PL.forEach(function(x){if((x[0]==='acc'||x[0]==='log')&&ADM===false)return;
 var b=document.createElement('button');b.className='rs-btn small'+(x[0]===PILL?' primary':'');b.textContent=x[1];
-b.addEventListener('click',function(){PILL=x[0];pills();show()});r.append(b)})}
+b.addEventListener('click',function(){PILL=x[0];pills();show()});r.append(b)});var rf=document.createElement('button');rf.className='rs-btn small';rf.textContent='↻ Refresh';rf.style.marginLeft='auto';rf.addEventListener('click',function(){show()});r.append(rf)}
 async function whoami(){if(ADM!==null)return;
 try{var r=await sb.rpc('is_business_admin',{p_business_id:BIZ});ADM=!!(r&&r.data)}catch(e){ADM=false}
 pills()}
@@ -2468,6 +2468,18 @@ var _tAk=tab;
 tab=function(t){var s=$('#t-ask');
 if(t===KEYT){_tAk(t);var so=$('#t-soon');if(so)so.hidden=true;s.hidden=false;$('#pt').textContent='Ask UmBrage';pills();show();return}
 s.hidden=true;_tAk(t)};
+})();
+  /* ===== Remember last page + pill (v8) ===== */
+(function(){
+var LK='soon:Ask UmBrage',CUR='dash',T=store.get('lasttab','dash'),_tL=tab;
+function ok(k){try{return k==='dash'||!!document.querySelector('[data-t="'+k+'"]')}catch(e){return false}}
+tab=function(t){_tL(t);CUR=String(t);store.set('lasttab',CUR)};
+document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('#akp button,#rxp button');if(!b||/Refresh/.test(b.textContent))return;store.set('pill:'+(b.closest('#akp')?'soon:Ask UmBrage':'soon:Reply Intelligence'),b.textContent)},true);
+function setPill(k){var l=store.get('pill:'+k,'');if(!l)return;var r=document.querySelector(k==='soon:Ask UmBrage'?'#akp':k==='soon:Reply Intelligence'?'#rxp':'#none');if(!r)return;var b=[].slice.call(r.querySelectorAll('button')).filter(function(x){return x.textContent===l})[0];if(b&&!b.classList.contains('primary'))b.click()}
+function go(){tab(T);setPill(T)}
+if(!ok(T))T='dash';
+go();
+if(!(sb&&BIZ)){var n=0,iv=setInterval(function(){n++;if(sb&&BIZ){clearInterval(iv);if(CUR===T)go()}else if(n>60)clearInterval(iv)},500)}
 })();
   tab('dash');
   /* ===== Reply Intelligence v6: Quality Lab pill ===== */
