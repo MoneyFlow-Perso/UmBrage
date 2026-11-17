@@ -2240,6 +2240,50 @@ var a=b.querySelector('#auh1').value.trim(),c=b.querySelector('#auh2').value.tri
 if(!a||!c){err({message:'Write both holding replies.'});return}
 try{await save({holding_reply:a+'\n---\n'+c});msg('Holding replies saved.');aset(b)}catch(e){err(e)}})}
 })();
+  /* ===== Reply Intelligence v7: AI draft fills the message box ===== */
+(function(){
+function noSalam(t){var x=String(t||'').replace(/^\s*(assalamu\s?alaikum|assalamualaikum|আসসালামু\s?আলাইকুম|আসসালামুআলাইকুম)[\s,.!।\-:]*/i,'').trim();return x||String(t||'').trim()}
+function hasBn(t){return /[\u0980-\u09FF]/.test(t)}
+function live(t){return window.RIM&&RIM.live?RIM.live(t):t}
+window.RIX=window.RIX||{};
+window.RIX.ed=function(P,redraw){
+var add=$('#rxam'),host=$('#rxpt');if(!add||!add.parentNode||!host)return;
+var busy=false;
+var bt=document.createElement('button');bt.type='button';bt.className='rs-btn small';bt.id='rxai';bt.textContent='\u2728 AI draft';add.parentNode.append(bt);
+var out=document.createElement('div');out.id='rxao';$('#rxfs').after(out);
+function say(h,w){out.innerHTML=h?'<div class="rx-hint'+(w?' rx-wn':'')+'" style="margin-top:8px">'+h+'</div>':''}
+function ask(){var t=($('#rxg').value||'').split('\n').map(function(s){return s.trim()}).filter(Boolean)[0];
+if(t)return t;var w=($('#rxw').value||'').split('\n')[0]||'';return w.split(',').map(function(s){return s.trim()}).filter(Boolean).slice(0,3).join(' ')}
+async function draw(idx){if(busy)return;var t=ask();
+if(!t){err({message:'Write a customer line (or word rules) in section 1 first, so the AI knows what the customer asks.'});return}
+if(typeof KB!=='undefined'&&KB&&KB.lim===0){err({message:'AI drafting is off (daily limit is 0).'});return}
+if(idx<0){idx=P.findIndex(function(p){return p.type==='text'&&!String(p.text||'').trim()});if(idx<0&&P.length>=6){err({message:'A reply can have up to 6 parts.'});return}}
+if(idx>=0&&String(P[idx].text||'').trim()&&!confirm('Replace the text in this message box with a new AI draft?'))return;
+busy=true;bt.disabled=true;say('Drafting...');
+try{var r=await sb.functions.invoke('umb-draft',{body:{business_id:BIZ,text:t,template:true}});
+if(r.error){var m=await aiErr(r.error);throw new Error(m==='limit'?'Daily AI limit reached.':'AI draft failed ('+m+')')}
+var j=r.data;if(!j||!j.text)throw new Error('The AI gave no usable reply.');
+if(typeof j.left==='number'&&typeof KB!=='undefined'&&KB&&KB.lim)AI.used=KB.lim-j.left;
+var tx=noSalam(j.text);
+if(idx<0){P.push({type:'text',text:tx});idx=P.length-1}else P[idx].text=tx;
+redraw();
+var lg=($('#rxl')||{}).value||'bn',w='';
+if(lg!=='en'&&(j.script_ok===false||!hasBn(tx)))w=' Warning: this draft is in Latin letters, but the rule is Bangla script. Tap AI draft again or fix it by hand.';
+if(lg==='en'&&hasBn(tx))w=' Warning: the reply language is English but this draft is in Bangla.';
+if(j.needs_human)w+=' The AI thinks a person should answer this kind of message. Think twice before using it as an automatic reply.';
+say('AI draft is in message box '+(idx+1)+'. Edit it, then tap Save.'+(typeof j.left==='number'?' ('+j.left+' AI drafts left today)':'')+w,!!w)}
+catch(e){say('');err(e)}
+busy=false;bt.disabled=false}
+bt.addEventListener('click',function(){draw(-1)});
+function deco(){Array.prototype.forEach.call(host.children,function(w,i){
+var bd=w.querySelector('.rx-pb'),ta=w.querySelector('textarea');if(!ta||!bd||bd.querySelector('.rxbar'))return;
+var bar=document.createElement('div');bar.className='rxbar';bar.style.cssText='display:flex;flex-wrap:wrap;gap:6px;margin-top:6px';
+var a=document.createElement('button');a.type='button';a.className='rs-btn small';a.textContent='\u2728 AI draft';a.addEventListener('click',function(){draw(i)});
+var l=document.createElement('button');l.type='button';l.className='rs-btn small';l.textContent='Make price live';
+l.addEventListener('click',function(){var n=live(P[i].text||'');if(n===(P[i].text||'')){say('No product name or price found in this box. Write the product name and its price in the text first.',true)}else{P[i].text=n;redraw();say('Done. The product name and price are now filled in live from Products when this is sent.')}});
+bar.append(a,l);bd.append(bar)})}
+new MutationObserver(deco).observe(host,{childList:true});deco()};
+})();
   tab('dash');
   /* ===== Reply Intelligence v6: Quality Lab pill ===== */
 (function(){
