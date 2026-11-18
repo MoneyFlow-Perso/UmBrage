@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+f<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -2533,6 +2533,77 @@ window.QLT=b.querySelector('#qltb');renderTest();return true};
 })();
 var _n=0,_t=setInterval(function(){_n++;var on=!$('#t-dash').hidden;if(on)paintExtras();if(sb&&BIZ){clearInterval(_t);if(on)kpis()}else if(_n>60)clearInterval(_t)},500);
 
+})();
+    /* ===== Marketing photos on Products (v9) ===== */
+(function(){
+var MAXP=8;
+function esc2(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function loadImg(file){return new Promise(function(ok,no){var u=URL.createObjectURL(file),im=new Image();im.onload=function(){ok({im:im,u:u})};im.onerror=function(){URL.revokeObjectURL(u);no(new Error('This file is not a readable picture'))};im.src=u})}
+function cvs(w,hh){var c=document.createElement('canvas');c.width=w;c.height=hh;return c}
+/* Fingerprint (dHash): region -> 72x64 grey -> 9x8 cells -> 64 bits -> 16 hex. The server uses the same steps. */
+function fp(im,x0,y0,x1,y1){
+ var sw=im.naturalWidth||im.width,sh=im.naturalHeight||im.height;
+ var sx=Math.round(sw*x0),sy=Math.round(sh*y0),cw=Math.max(16,Math.round(sw*(x1-x0))),ch=Math.max(16,Math.round(sh*(y1-y0)));
+ var k=Math.min(1,512/Math.max(cw,ch)),w=Math.max(72,Math.round(cw*k)),hh=Math.max(64,Math.round(ch*k));
+ var c=cvs(w,hh),g=c.getContext('2d',{willReadFrequently:true});g.imageSmoothingQuality='high';g.drawImage(im,sx,sy,cw,ch,0,0,w,hh);
+ while(c.width>144||c.height>128){var nw=Math.max(72,Math.ceil(c.width/2)),nh=Math.max(64,Math.ceil(c.height/2)),d=cvs(nw,nh),dg=d.getContext('2d',{willReadFrequently:true});dg.imageSmoothingQuality='high';dg.drawImage(c,0,0,nw,nh);c=d}
+ var f=cvs(72,64),fg=f.getContext('2d',{willReadFrequently:true});fg.imageSmoothingQuality='high';fg.drawImage(c,0,0,72,64);
+ var px=fg.getImageData(0,0,72,64).data,cell=[];
+ for(var cy=0;cy<8;cy++)for(var cx=0;cx<9;cx++){var s=0;for(var y=0;y<8;y++)for(var x=0;x<8;x++){var i=((cy*8+y)*72+cx*8+x)*4;s+=0.299*px[i]+0.587*px[i+1]+0.114*px[i+2]}cell.push(s/64)}
+ var hex='';
+ for(var r=0;r<8;r++){for(var q=0;q<2;q++){var n=0;for(var b=0;b<4;b++){var xx=q*4+b;n=n*2+(cell[r*9+xx]>cell[r*9+xx+1]?1:0)}hex+=n.toString(16)}}
+ return hex}
+function jpg(im,max){var sw=im.naturalWidth||im.width,sh=im.naturalHeight||im.height,k=Math.min(1,max/Math.max(sw,sh)),c=cvs(Math.round(sw*k),Math.round(sh*k));c.getContext('2d').drawImage(im,0,0,c.width,c.height);return new Promise(function(ok,no){c.toBlob(function(b){b?ok(b):no(new Error('Could not prepare the picture'))},'image/jpeg',0.85)})}
+function rid(){return Date.now()+'-'+Math.random().toString(36).slice(2,8)}
+function sign(path){return sb.storage.from('umb-media').createSignedUrl(path,3600).then(function(r){return(r&&r.data&&r.data.signedUrl)||''}).catch(function(){return ''})}
+
+var _pc=prodCard;
+prodCard=function(p){
+ var box=_pc(p),sec=document.createElement('div');
+ sec.style.cssText='margin:14px 0 6px;padding:12px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.02)';
+ var ac=box.querySelector('.ac');if(ac)box.insertBefore(sec,ac);else box.append(sec);
+ if(!p.id){sec.innerHTML='<label style="margin:0">Marketing photos</label><div style="font-size:12px;color:var(--muted);margin-top:4px">Save the product first, then add its marketing photos here.</div>';return box}
+ var rows=[];
+ function draw(){
+  sec.innerHTML='<label style="margin:0">Marketing photos</label>'+
+   '<div style="font-size:12px;color:var(--muted);margin:4px 0 8px;line-height:1.5">Add the photos you post for this product. The agent uses them to recognise the product when a customer sends a picture. Up to '+MAXP+' per product. Only a fingerprint and a small copy are kept.</div>'+
+   '<div data-g style="display:flex;flex-wrap:wrap;gap:8px"></div>'+
+   '<div style="margin-top:8px"><button type="button" data-add>+ Add photos</button><input type="file" accept="image/*" multiple hidden data-f><span data-s style="margin-left:8px;font-size:12px;color:var(--muted)"></span></div>';
+  var g=sec.querySelector('[data-g]');
+  if(!rows.length)g.innerHTML='<div style="font-size:12px;color:var(--muted)">No photos yet.</div>';
+  rows.forEach(function(r){
+   var w=document.createElement('div');w.style.cssText='position:relative;width:76px;height:76px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#000';
+   var im=document.createElement('img');im.style.cssText='width:100%;height:100%;object-fit:cover';im.alt='';w.append(im);
+   if(r.path)sign(r.path).then(function(u){if(u)im.src=u});
+   var x=document.createElement('button');x.type='button';x.textContent='\u00D7';x.setAttribute('aria-label','Remove photo');x.style.cssText='position:absolute;top:2px;right:2px;width:22px;height:22px;padding:0;border-radius:11px;line-height:20px;background:rgba(0,0,0,.7);color:#fff';
+   x.addEventListener('click',function(){del(r)});w.append(x);
+   if(r.source==='learned'){var t=document.createElement('span');t.textContent='learned';t.style.cssText='position:absolute;left:3px;bottom:3px;font-size:9px;padding:1px 5px;border-radius:6px;background:rgba(0,0,0,.7);color:var(--green)';w.append(t)}
+   g.append(w)});
+  var f=sec.querySelector('[data-f]');
+  sec.querySelector('[data-add]').addEventListener('click',function(){if(rows.length>=MAXP)return err({message:'Up to '+MAXP+' photos per product. Remove one first.'});f.click()});
+  f.addEventListener('change',function(){var fl=[].slice.call(f.files||[]);f.value='';if(fl.length)add(fl)})}
+ async function load(){var r=await sb.from('umb_product_photos').select('id,path,source,created_at').eq('product_id',p.id).order('created_at');if(r.error){sec.innerHTML='<div style="color:var(--red);font-size:12px">Could not load photos: '+esc2(r.error.message)+'</div>';return}rows=r.data||[];draw()}
+ async function add(fl){
+  var s=sec.querySelector('[data-s]'),done=0;
+  for(var i=0;i<fl.length;i++){
+   if(rows.length>=MAXP){err({message:'Up to '+MAXP+' photos per product.'});break}
+   try{
+    s.textContent='Adding '+(i+1)+' of '+fl.length+'...';
+    var L=await loadImg(fl[i]),full=fp(L.im,0,0,1,1),mid=fp(L.im,0.1,0.1,0.9,0.9),bl=await jpg(L.im,1280);URL.revokeObjectURL(L.u);
+    var path=BIZ+'/products/'+p.id+'/'+rid()+'.jpg',up=await sb.storage.from('umb-media').upload(path,bl,{contentType:'image/jpeg'});if(up.error)throw up.error;
+    var ins=await sb.from('umb_product_photos').insert({business_id:BIZ,product_id:p.id,hash:full,hash_c:mid,path:path,label:p.name||null,source:'marketing'}).select('id,path,source,created_at').single();
+    if(ins.error){await sb.storage.from('umb-media').remove([path]);throw ins.error}
+    rows.push(ins.data);done++;draw();s=sec.querySelector('[data-s]')
+   }catch(e){err(e)}}
+  s=sec.querySelector('[data-s]');if(s)s.textContent=done?('Added '+done+' photo'+(done>1?'s':'')+'.'):''}
+ async function del(r){
+  if(!confirm('Remove this photo?'))return;
+  try{var d=await sb.from('umb_product_photos').delete().eq('id',r.id).select('id');if(d.error)throw d.error;if(!d.data||!d.data.length)throw new Error('Not removed (no permission?)');
+   if(r.path)await sb.storage.from('umb-media').remove([r.path]);
+   rows=rows.filter(function(x){return x.id!==r.id});draw()}catch(e){err(e)}}
+ sec.innerHTML='<div style="font-size:12px;color:var(--muted)">Loading photos...</div>';
+ load();
+ return box}
 })();
 </script>
 </body>
