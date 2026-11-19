@@ -2604,6 +2604,178 @@ prodCard=function(p){
  load();
  return box}
 })();
+  /* ===== Products by colour (v10): each colour has its own sizes, stock and photos ===== */
+(function(){
+var MAXP=8,URLC={};
+function nk(s){return String(s==null?'':s).trim().toLowerCase()}
+function ls(s){return String(s||'').split(',').map(function(x){return x.trim()}).filter(Boolean)}
+function uniq(a){var o=[],s={};a.forEach(function(x){var k=nk(x);if(!s[k]){s[k]=1;o.push(x)}});return o}
+function vkey(s,c){return (s+'|'+c).toLowerCase()}
+function loadImg(file){return new Promise(function(ok,no){var u=URL.createObjectURL(file),im=new Image();im.onload=function(){ok({im:im,u:u})};im.onerror=function(){URL.revokeObjectURL(u);no(new Error('This file is not a readable picture'))};im.src=u})}
+function cvs(w,hh){var c=document.createElement('canvas');c.width=w;c.height=hh;return c}
+/* Fingerprint (dHash): region -> 72x64 grey -> 9x8 cells -> 64 bits -> 16 hex. Same steps as the server. */
+function fp(im,x0,y0,x1,y1){
+ var sw=im.naturalWidth||im.width,sh=im.naturalHeight||im.height;
+ var sx=Math.round(sw*x0),sy=Math.round(sh*y0),cw=Math.max(16,Math.round(sw*(x1-x0))),ch=Math.max(16,Math.round(sh*(y1-y0)));
+ var k=Math.min(1,512/Math.max(cw,ch)),w=Math.max(72,Math.round(cw*k)),hh=Math.max(64,Math.round(ch*k));
+ var c=cvs(w,hh),g=c.getContext('2d',{willReadFrequently:true});g.imageSmoothingQuality='high';g.drawImage(im,sx,sy,cw,ch,0,0,w,hh);
+ while(c.width>144||c.height>128){var nw=Math.max(72,Math.ceil(c.width/2)),nh=Math.max(64,Math.ceil(c.height/2)),d=cvs(nw,nh),dg=d.getContext('2d',{willReadFrequently:true});dg.imageSmoothingQuality='high';dg.drawImage(c,0,0,nw,nh);c=d}
+ var f=cvs(72,64),fg=f.getContext('2d',{willReadFrequently:true});fg.imageSmoothingQuality='high';fg.drawImage(c,0,0,72,64);
+ var px=fg.getImageData(0,0,72,64).data,cell=[];
+ for(var cy=0;cy<8;cy++)for(var cx=0;cx<9;cx++){var s=0;for(var y=0;y<8;y++)for(var x=0;x<8;x++){var i=((cy*8+y)*72+cx*8+x)*4;s+=0.299*px[i]+0.587*px[i+1]+0.114*px[i+2]}cell.push(s/64)}
+ var hex='';
+ for(var r=0;r<8;r++){for(var q=0;q<2;q++){var n=0;for(var b=0;b<4;b++){var xx=q*4+b;n=n*2+(cell[r*9+xx]>cell[r*9+xx+1]?1:0)}hex+=n.toString(16)}}
+ return hex}
+function jpg(im,max){var sw=im.naturalWidth||im.width,sh=im.naturalHeight||im.height,k=Math.min(1,max/Math.max(sw,sh)),c=cvs(Math.round(sw*k),Math.round(sh*k));c.getContext('2d').drawImage(im,0,0,c.width,c.height);return new Promise(function(ok,no){c.toBlob(function(b){b?ok(b):no(new Error('Could not prepare the picture'))},'image/jpeg',0.85)})}
+function rid(){return Date.now()+'-'+Math.random().toString(36).slice(2,8)}
+function sign(path){if(URLC[path])return Promise.resolve(URLC[path]);return sb.storage.from('umb-media').createSignedUrl(path,3600).then(function(r){var u=(r&&r.data&&r.data.signedUrl)||'';if(u)URLC[path]=u;return u}).catch(function(){return ''})}
+
+/* What to write for one product: which size+colour rows to add, change, switch off, and the stock numbers. */
+function planV(ex,bl){
+ var by={};ex.forEach(function(x){by[vkey(x.size||'',x.color||'')]=x});
+ var ins=[],upd=[],qs=[],keep={},qk={};
+ bl.forEach(function(x,ci){(x.S.length?x.S:['']).forEach(function(s,si){
+  var k=vkey(s,x.c),q=x.q[nk(s)]||0,sort=ci*100+si,v=by[k];
+  if(!v){ins.push({size:s||null,color:x.c||null,sort:sort});qk[k]=q}
+  else{keep[v.id]=1;if(!v.active||v.sort!==sort)upd.push({id:v.id,sort:sort});qs.push({variant_id:v.id,qty:q})}})});
+ var off=ex.filter(function(x){return x.active&&!keep[x.id]}).map(function(x){return x.id});
+ return{ins:ins,upd:upd,qs:qs,qk:qk,off:off}}
+
+prodCard=function(p){
+ var box=h('div',{class:'card'}),B=[],PS=[],gen={ph:[]},LD={ok:false};
+ var I=function(n,l,v,t){return h('div',{},h('label',{},l),h('input',{name:n,value:v==null?'':v,type:t||'text'}))};
+ var d=h('textarea',{name:'d',rows:'3'}),pt2=h('textarea',{name:'pt',rows:'2'}),ch=h('input',{name:'act',type:'checkbox',style:'width:auto'});
+ d.value=p.description||'';pt2.value=p.pitch||'';ch.checked=p.active!==false;
+ var newB=function(){return{c:'',q:{},sz:[],ph:[]}};
+ var byc={};
+ p.v.forEach(function(x){var k=nk(x.c),b=byc[k];if(!b){b=newB();b.c=x.c;byc[k]=b;B.push(b)}if(x.z)b.sz.push(x.z);b.q[nk(x.z)]=x.q});
+ if(!B.length)B.push(newB());
+ var blocksEl=h('div',{}),genWrap=h('div',{});
+
+ function mkPanel(title,arr,getCol,move){
+  var sec=h('div',{style:'margin-top:10px'}),sel={},st=h('span',{style:'margin-left:8px;font-size:12px;color:var(--muted)'});
+  var fi=h('input',{type:'file',accept:'image/*',multiple:'multiple',hidden:'hidden'}),muted='font-size:12px;color:var(--muted)';
+  var draw=function(){
+   var g=h('div',{style:'display:flex;flex-wrap:wrap;gap:8px;margin-top:6px'}),kids=[h('label',{style:'margin:0'},title),g];
+   if(!p.id)g.append(h('div',{style:muted},'Save the product first, then add photos here.'));
+   else if(!LD.ok)g.append(h('div',{style:muted},'Loading photos...'));
+   else if(!arr.length)g.append(h('div',{style:muted},'No photos yet.'));
+   if(p.id&&LD.ok){
+    arr.forEach(function(r){
+     var w=h('div',{style:'position:relative;width:76px;height:76px;border-radius:10px;overflow:hidden;background:#000;border:2px solid '+(sel[r.id]?'var(--green)':'var(--line)')});
+     var im=h('img',{alt:'',style:'width:100%;height:100%;object-fit:cover'});
+     if(r.path)sign(r.path).then(function(u){if(u)im.src=u});
+     w.append(im);
+     var x=h('button',{type:'button','aria-label':'Remove photo',style:'position:absolute;top:2px;right:2px;width:22px;height:22px;padding:0;border-radius:11px;line-height:20px;background:rgba(0,0,0,.7);color:#fff'},'\u00D7');
+     x.addEventListener('click',function(e){e.stopPropagation();del(r)});w.append(x);
+     if(move){w.addEventListener('click',function(){sel[r.id]=!sel[r.id];draw()});
+      if(r.color)w.append(h('span',{style:'position:absolute;left:3px;bottom:3px;max-width:66px;overflow:hidden;font-size:9px;padding:1px 5px;border-radius:6px;background:rgba(0,0,0,.7);color:var(--green)'},r.color))}
+     g.append(w)});
+    var ids=arr.filter(function(r){return sel[r.id]}).map(function(r){return r.id});
+    if(move&&ids.length){
+     var names=uniq(B.map(function(b){return b.cin.value.trim()}).filter(Boolean));
+     kids.push(h('div',{style:'margin-top:8px;'+muted},names.length?'Move the selected photos to:':'Type the colour names above first, then you can move photos.'));
+     names.forEach(function(nm){var mb=h('button',{type:'button',style:'margin:4px 6px 0 0'},nm);mb.addEventListener('click',function(){moveTo(ids,nm)});kids.push(mb)})}
+    var ab=h('button',{type:'button'},'+ Add photos');
+    ab.addEventListener('click',function(){if(arr.length>=MAXP)return err({message:'Up to '+MAXP+' photos here. Remove one first.'});fi.click()});
+    kids.push(h('div',{style:'margin-top:8px'},ab,fi,st))}
+   sec.replaceChildren(...kids)};
+  fi.addEventListener('change',function(){var fl=[].slice.call(fi.files||[]);fi.value='';if(fl.length)add(fl)});
+  async function add(fl){
+   var col=getCol(),done=0;
+   if(B.length>1&&!col){err({message:'Type this colour\'s name first, then add its photos.'});return}
+   for(var i=0;i<fl.length;i++){
+    if(arr.length>=MAXP){err({message:'Up to '+MAXP+' photos here.'});break}
+    try{
+     st.textContent='Adding '+(i+1)+' of '+fl.length+'...';
+     var L=await loadImg(fl[i]),full=fp(L.im,0,0,1,1),mid=fp(L.im,0.1,0.1,0.9,0.9),bl=await jpg(L.im,1280);URL.revokeObjectURL(L.u);
+     var path=BIZ+'/products/'+p.id+'/'+rid()+'.jpg',up=await sb.storage.from('umb-media').upload(path,bl,{contentType:'image/jpeg'});if(up.error)throw up.error;
+     var ins=await sb.from('umb_product_photos').insert({business_id:BIZ,product_id:p.id,hash:full,hash_c:mid,path:path,label:p.name||null,source:'marketing',color:col||null}).select('id,path,source,created_at,color').single();
+     if(ins.error){await sb.storage.from('umb-media').remove([path]);throw ins.error}
+     arr.push(ins.data);done++;draw()
+    }catch(e){err(e)}}
+   st.textContent=done?('Added '+done+' photo'+(done>1?'s':'')+'.'):''}
+  async function del(r){
+   if(!confirm('Remove this photo?'))return;
+   try{var q=await sb.from('umb_product_photos').delete().eq('id',r.id).select('id');if(q.error)throw q.error;if(!q.data||!q.data.length)throw new Error('Not removed (no permission?)');
+    if(r.path)await sb.storage.from('umb-media').remove([r.path]);
+    var i=arr.indexOf(r);if(i>-1)arr.splice(i,1);draw()}catch(e){err(e)}}
+  sec.redraw=draw;draw();return sec}
+
+ async function moveTo(ids,nm){
+  try{var q=await sb.from('umb_product_photos').update({color:nm}).in('id',ids).select('id');if(q.error)throw q.error;
+   var tb=B.filter(function(b){return nk(b.cin.value)===nk(nm)})[0];
+   ids.forEach(function(id){var r=gen.ph.filter(function(x){return x.id===id})[0];if(!r)return;gen.ph.splice(gen.ph.indexOf(r),1);r.color=nm;if(tb)tb.ph.push(r)});
+   PS.forEach(function(s){s.redraw()});showGen()}catch(e){err(e)}}
+ function showGen(){genWrap.hidden=!(gen.ph.length>0||B.length>1)}
+
+ function blockEl(b){
+  var el=h('div',{style:'border:1px solid var(--line);border-radius:14px;padding:12px;margin:12px 0;background:rgba(255,255,255,.02)'});
+  var cin=h('input',{value:b.c,placeholder:'Colour, e.g. Navy (empty = no colour)'}),zin=h('input',{value:b.sz.join(', '),placeholder:'M, L, XL or 32, 34, 36 (empty = one size)'}),grid=h('div',{style:'overflow-x:auto;margin-top:6px'});
+  b.cin=cin;b.zin=zin;
+  var drawG=function(){var S=uniq(ls(zin.value)),tb=h('table',{class:'gt'});
+   (S.length?S:['']).forEach(function(s){var k=nk(s),i=h('input',{type:'number',min:'0','aria-label':(s||'One size')+' stock'});i.value=b.q[k]||0;i.addEventListener('input',function(){b.q[k]=parseInt(i.value,10)||0});tb.append(h('tr',{},h('th',{},s||'One size'),h('td',{},i)))});
+   grid.replaceChildren(tb)};
+  zin.addEventListener('change',drawG);drawG();
+  b.panel=mkPanel('Photos for this colour',b.ph,function(){return cin.value.trim()},false);PS.push(b.panel);
+  var rm=h('button',{type:'button',style:'color:#ff8a8a'},'Remove colour');
+  rm.addEventListener('click',function(){
+   if(!confirm('Remove this colour with its sizes and stock? Its photos stay under General photos.'))return;
+   var i=B.indexOf(b);if(i>-1)B.splice(i,1);PS.splice(PS.indexOf(b.panel),1);
+   b.ph.forEach(function(r){gen.ph.push(r)});el.remove();
+   if(!B.length){var nb=newB();B.push(nb);blocksEl.append(blockEl(nb))}
+   PS.forEach(function(s){s.redraw()});showGen()});
+  el.append(h('div',{style:'display:flex;justify-content:space-between;align-items:center;gap:8px'},h('label',{style:'margin:0'},'Colour'),rm),cin,h('label',{style:'margin-top:8px'},'Sizes for this colour'),zin,h('label',{},'Stock per size (staff only, never sent in chats)'),grid,b.panel);
+  return el}
+
+ B.forEach(function(b){blocksEl.append(blockEl(b))});
+ var gp=mkPanel('General photos (not tied to one colour). Tap a photo to select it, then move it to a colour.',gen.ph,function(){return ''},true);PS.push(gp);genWrap.append(gp);showGen();
+ var addC=h('button',{type:'button'},'+ Add colour');
+ addC.addEventListener('click',function(){var nb=newB();B.push(nb);blocksEl.append(blockEl(nb));showGen()});
+
+ async function loadPh(){
+  if(!p.id)return;
+  var r=await sb.from('umb_product_photos').select('id,path,source,created_at,color').eq('product_id',p.id).order('created_at');
+  if(r.error)err(r.error);
+  var m={};B.forEach(function(b){if(nk(b.c))m[nk(b.c)]=b});
+  var solo=(B.length===1&&!nk(B[0].c))?B[0]:null;
+  (r.data||[]).forEach(function(x){var b=x.color?m[nk(x.color)]:null;if(!b&&solo&&!x.color)b=solo;(b?b.ph:gen.ph).push(x)});
+  LD.ok=true;PS.forEach(function(s){s.redraw()});showGen()}
+
+ async function save(btn){
+  var f=function(k){return box.querySelector('[name='+k+']')};
+  var row={business_id:BIZ,code:f('code').value.trim()||null,name:f('name').value.trim(),price:Number(f('price').value)||0,description:f('d').value,pitch:f('pt').value,active:f('act').checked,category:f('cat').value.trim()||null,cost_price:Number(f('cost').value)||0};
+  if(!row.name){err('Give the product a name first');return}
+  var bl=B.map(function(b){return{b:b,c:b.cin.value.trim(),S:uniq(ls(b.zin.value)),q:b.q}});
+  if(bl.length>1&&bl.some(function(x){return !x.c})){err('Give every colour a name, or remove the empty one');return}
+  var seen={};for(var i=0;i<bl.length;i++){var k=nk(bl[i].c);if(seen[k]){err('The colour "'+bl[i].c+'" is listed twice');return}seen[k]=1}
+  var st=$('#st');st.style.borderColor='';
+  btn.disabled=true;btn.textContent='Saving...';st.textContent='Saving '+row.name+'... please wait a few seconds, do not close this page.';
+  try{
+   var r=p.id?await sb.from('umb_products').update(row).eq('id',p.id).select().single():await sb.from('umb_products').insert(row).select().single();
+   if(r.error)throw r.error;p.id=r.data.id;
+   var ex=await sb.from('umb_variants').select('*').eq('product_id',p.id);if(ex.error)throw ex.error;
+   var P=planV(ex.data,bl);
+   if(P.ins.length){var n=await sb.from('umb_variants').insert(P.ins.map(function(v){return{business_id:BIZ,product_id:p.id,size:v.size,color:v.color,sort:v.sort}})).select();if(n.error)throw n.error;
+    n.data.forEach(function(v){P.qs.push({variant_id:v.id,qty:P.qk[vkey(v.size||'',v.color||'')]||0})})}
+   if(P.upd.length){var U=await Promise.all(P.upd.map(function(u){return sb.from('umb_variants').update({active:true,sort:u.sort}).eq('id',u.id)}));var ue=U.filter(function(x){return x.error})[0];if(ue)throw ue.error}
+   if(P.off.length){var o=await sb.from('umb_variants').update({active:false}).in('id',P.off);if(o.error)throw o.error}
+   if(P.qs.length){var s2=await sb.from('umb_stock').upsert(P.qs.map(function(x){return{variant_id:x.variant_id,business_id:BIZ,qty:x.qty,updated_by:UID}}));if(s2.error)throw s2.error}
+   for(var j=0;j<bl.length;j++){var ids=bl[j].b.ph.filter(function(r2){return (r2.color||'')!==bl[j].c}).map(function(r2){return r2.id});
+    if(ids.length){var pc=await sb.from('umb_product_photos').update({color:bl[j].c||null}).in('id',ids);if(pc.error)throw pc.error}}
+   await loadAll();renderProd();$('#st').textContent='Saved '+row.name
+  }catch(e){err(e);btn.disabled=false;btn.textContent='Save product'}}
+
+ var sv=h('button',{class:'pri',type:'button'},'Save product');sv.addEventListener('click',function(){save(sv)});
+ box.append(h('div',{class:'two'},I('code','Product code',p.code),I('price','Price (BDT)',p.price||'','number')),I('name','Name',p.name),h('div',{class:'two'},I('cat','Category',p.category),I('cost','Cost price (BDT, staff only)',p.cost_price||'','number')),
+  h('label',{},'Description (the only source for details like material or fit)'),d,h('label',{},'Pitch (sales hook used with the price)'),pt2,
+  h('label',{},'Colours, sizes, stock and photos'),
+  h('div',{style:'font-size:12px;color:var(--muted);margin:2px 0 4px;line-height:1.5'},'Each colour has its own sizes (M, L, XL or 32, 34, 36), stock and photos. Leave the colour empty if the product has no colours. The agent uses the photos to recognise the product when a customer sends a picture.'),
+  blocksEl,addC,genWrap,h('label',{},ch,' Active (the agent can talk about it)'),
+  h('p',{class:'ac'},sv,p.id&&p.active===false?h('button',{type:'button',style:'margin-left:8px;color:#ff8a8a',onclick:function(){delProd(p)}},'Delete for good'):null));
+ loadPh();
+ return box}
+})();
 })();
 </script>
 </body>
