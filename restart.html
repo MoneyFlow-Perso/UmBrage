@@ -3047,6 +3047,16 @@ window.RIX.pill=function(pill,b,edit){
   if(a){if(prev)prev(pill,b,edit)}else note(b)},function(){note(b)});
  return true};
 })();
+  /* ===== Answer automatically is admin-only in the editor (v18) ===== */
+(function(){
+var Q=0;
+function fix(){Q=0;var a=document.getElementById('rxa');if(!a||a._adm)return;a._adm=1;
+ if(window.isAdmin&&window.isAdmin())return;
+ var on=a.checked,lb=a.closest('label')||a.parentNode;
+ if(!on)a.disabled=true;
+ lb.after(h('small',{class:'rx-hint',style:'display:block;margin:-4px 0 8px'},on?'Only the admin can edit this reply while Answer automatically is on. Untick it to edit; the admin can switch it on again.':'Only the admin can turn on Answer automatically.'))}
+new MutationObserver(function(){if(!Q)Q=requestAnimationFrame(fix)}).observe(document.body,{childList:true,subtree:true});
+})();
 })();
 </script>
 </body>
