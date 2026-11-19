@@ -3098,6 +3098,14 @@ function fix(){Q=0;var a=!!(window.isAdmin&&window.isAdmin());
 new MutationObserver(function(){if(!Q)Q=requestAnimationFrame(fix)}).observe(document.body,{childList:true,subtree:true});
 setInterval(fix,2000);
 })();
+    /* ===== "Delete for good" is admin-only (v20): hidden for staff and blocked if tapped ===== */
+(function(){
+var Q=0,d0=delProd;
+function adm(){return !!(window.isAdmin&&window.isAdmin())}
+function fix(){Q=0;var a=adm();[].forEach.call(document.querySelectorAll('button'),function(b){if(b.textContent.trim()==='Delete for good')b.style.display=a?'':'none'})}
+delProd=function(p){if(!adm()){var s=document.getElementById('st');if(s){s.style.borderColor='#c0392b';s.textContent='Only the admin can delete a product for good. You can untick Active instead.'}return}return d0.apply(this,arguments)};
+new MutationObserver(function(){if(!Q)Q=requestAnimationFrame(fix)}).observe(document.body,{childList:true,subtree:true});
+})();
 })();
 </script>
 </body>
