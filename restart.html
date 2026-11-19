@@ -2709,7 +2709,7 @@ prodCard=function(p){
    PS.forEach(function(s){s.redraw()});showGen()}catch(e){err(e)}}
  function showGen(){genWrap.hidden=!(gen.ph.length>0||B.length>1)}
 
- function blockEl(b){
+  function blockEl(b){
   var el=h('div',{style:'border:1px solid var(--line);border-radius:14px;padding:12px;margin:12px 0;background:rgba(255,255,255,.02)'});
   var cin=h('input',{value:b.c,placeholder:'Colour, e.g. Navy (empty = no colour)'}),zin=h('input',{value:b.sz.join(', '),placeholder:'M, L, XL or 32, 34, 36 (empty = one size)'}),grid=h('div',{style:'overflow-x:auto;margin-top:6px'});
   b.cin=cin;b.zin=zin;
@@ -2725,7 +2725,24 @@ prodCard=function(p){
    b.ph.forEach(function(r){gen.ph.push(r)});el.remove();
    if(!B.length){var nb=newB();B.push(nb);blocksEl.append(blockEl(nb))}
    PS.forEach(function(s){s.redraw()});showGen()});
-  el.append(h('div',{style:'display:flex;justify-content:space-between;align-items:center;gap:8px'},h('label',{style:'margin:0'},'Colour'),rm),cin,h('label',{style:'margin-top:8px'},'Sizes for this colour'),zin,h('label',{},'Stock per size (staff only, never sent in chats)'),grid,b.panel);
+  /* v11: a filled colour folds into one line; Edit opens it again */
+  var sumT=h('div',{style:'min-width:0;flex:1'}),ed=h('button',{type:'button'},'Edit'),sum=h('div',{style:'display:none;align-items:center;gap:8px;cursor:pointer'},sumT,ed);
+  var body=h('div',{}),dn=h('button',{type:'button',class:'pri',style:'margin-top:12px'},'Done');
+  b.refresh=function(){
+   var S=uniq(ls(zin.value)),t=0;(S.length?S:['']).forEach(function(s){t+=b.q[nk(s)]||0});
+   var np=b.ph.length;
+   sumT.replaceChildren(h('div',{style:'font-weight:600'},cin.value.trim()||'No colour'),
+    h('div',{style:'font-size:12px;color:var(--muted);margin-top:2px'},(S.length?S.join(', '):'One size')+' \u00B7 stock '+t+' \u00B7 '+np+' photo'+(np===1?'':'s')))};
+  var rd=b.panel.redraw;b.panel.redraw=function(){rd();b.refresh()};
+  var setOpen=function(o){b.open=o;body.style.display=o?'':'none';sum.style.display=o?'none':'flex';if(!o)b.refresh()};
+  ed.addEventListener('click',function(e){e.stopPropagation();setOpen(true)});
+  sum.addEventListener('click',function(){setOpen(true)});
+  dn.addEventListener('click',function(){
+   if(B.length>1&&!cin.value.trim()){err({message:'Give this colour a name first, then tap Done.'});return}
+   setOpen(false)});
+  body.append(h('div',{style:'display:flex;justify-content:space-between;align-items:center;gap:8px'},h('label',{style:'margin:0'},'Colour'),rm),cin,h('label',{style:'margin-top:8px'},'Sizes for this colour'),zin,h('label',{},'Stock per size (staff only, never sent in chats)'),grid,b.panel,dn);
+  el.append(sum,body);
+  setOpen(!(b.c||b.sz.length||b.ph.length));
   return el}
 
  B.forEach(function(b){blocksEl.append(blockEl(b))});
