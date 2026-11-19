@@ -2797,10 +2797,10 @@ prodCard=function(p){
 (function(){
 var HOVER=!!(window.matchMedia&&matchMedia('(hover:hover)').matches),SEQ=0,TM=0,OPEN=false;
 var css=document.createElement('style');
-css.textContent='#gs{position:relative;width:40px;height:40px;flex:none}'
-+'#gs .gs-b{position:absolute;right:0;top:0;height:40px;width:40px;border:1px solid var(--line);border-radius:20px;background:#101813;display:flex;align-items:center;overflow:hidden;transition:width .25s ease,border-color .2s;z-index:60}'
+css.textContent='#gs{position:relative;width:84px;height:40px;flex:none}'
++'#gs .gs-b{position:absolute;right:0;top:0;height:40px;width:84px;border:1px solid var(--line);border-radius:20px;background:#101813;display:flex;align-items:center;overflow:hidden;transition:width .25s ease,border-color .2s;z-index:60}'
 +'#gs.on .gs-b{width:min(340px,calc(100vw - 28px));border-color:var(--green)}'
-+'#gs .gs-i{flex:none;width:38px;height:38px;padding:0;border:0;background:transparent;color:var(--green);display:flex;align-items:center;justify-content:center;cursor:pointer}'
++'#gs .gs-i{flex:none;width:auto;height:38px;padding:0 14px;border:0;background:transparent;color:var(--green);font-size:14px;font-weight:600;white-space:nowrap;display:flex;align-items:center;justify-content:center;cursor:pointer}'
 +'#gs input{flex:1;min-width:0;width:auto;margin:0;border:0!important;border-radius:0;background:transparent!important;box-shadow:none!important;color:var(--text);font-size:16px;padding:0 12px 0 0;height:38px;outline:none;opacity:0;pointer-events:none;transition:opacity .15s}'
 +'#gs.on input{opacity:1;pointer-events:auto}'
 +'#gs .gs-r{position:absolute;right:0;top:46px;width:min(380px,calc(100vw - 28px));max-height:62vh;overflow:auto;background:#0b130f;border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 34px rgba(0,0,0,.55);padding:6px;z-index:60}'
@@ -2814,8 +2814,8 @@ document.head.append(css);
 
 var wrap=h('div',{id:'gs',role:'search'}),box=h('div',{class:'gs-b'}),res=h('div',{class:'gs-r'}),
  btn=h('button',{type:'button',class:'gs-i','aria-label':'Search'}),
- inp=h('input',{type:'text',placeholder:'Search orders, chats, products...','aria-label':'Search',autocomplete:'off',autocapitalize:'off',spellcheck:'false',enterkeyhint:'search'});
-btn.innerHTML='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>';
+ inp=h('input',{type:'text',placeholder:'orders, chats, products...','aria-label':'Search',autocomplete:'off',autocapitalize:'off',spellcheck:'false',enterkeyhint:'search'});
+btn.textContent='Search';
 res.hidden=true;box.append(btn,inp);wrap.append(box,res);
 var ta=document.querySelector('.top-actions');if(ta)ta.insertBefore(wrap,ta.firstChild);
 
