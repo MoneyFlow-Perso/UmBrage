@@ -2954,6 +2954,62 @@ function paint(chips,list){
  else if(ALL.length>=300)kids.push(h('div',{class:'rx-hint',style:'text-align:center;margin-top:8px'},'Showing the latest 300 entries.'));
  list.replaceChildren.apply(list,kids)}
 })();
+  /* ===== Tidy lists (v15): one helper that keeps every long list short. Reuse for any new list: LV.add({sel,item,name,head,sum,skip,per,bar}) ===== */
+(function(){
+var RULES=[],PER=15,Q=0;
+var css=document.createElement('style');
+css.textContent='.lv-h{display:none!important}'
++'.lv-bar[hidden],.lv-more[hidden]{display:none!important}'
++'.lv-bar{display:flex;align-items:center;gap:8px;margin:0 0 8px}'
++'.lv-bar input{flex:1;min-width:0;font-size:16px;padding:8px 14px;border-radius:99px}'
++'.lv-n{font-size:11px;color:var(--muted);flex:none;white-space:nowrap}'
++'.lv-more{display:block;width:100%;margin:6px 0 12px}'
++'.lv-t{cursor:pointer;position:relative}'
++'.lv-t:after{content:"\\25BE";position:absolute;right:12px;top:10px;color:var(--muted);font-size:12px}'
++'.lv-t.lv-open:after{content:"\\25B4"}'
++'.lv-t:not(.lv-open)>.lv-rest{display:none}'
++'.lv-t:not(.lv-open){padding:10px 34px 10px 14px!important;margin:0 0 8px!important}.lv-t:not(.lv-open)>p:first-child{margin:0}'
++'.lv-sum{padding-right:22px}.lv-sum b{font-size:15px}.lv-sum small{display:block;color:var(--muted);margin-top:2px}';
+document.head.append(css);
+function txt(c){var s=c.textContent;[].forEach.call(c.querySelectorAll('input,textarea'),function(i){if(i.type!=='checkbox'&&i.type!=='file')s+=' '+i.value});return s.toLowerCase()}
+function attach(el,r){
+ if(el._lv)return;el._lv=1;
+ var per=r.per||PER,show=per,bar=null,inp=null,cnt=null,more=h('button',{type:'button',class:'gh lv-more'});
+ more.hidden=true;el.after(more);
+ if(r.bar!==false){inp=h('input',{type:'search','aria-label':'Filter '+(r.name||'list'),placeholder:'Filter '+(r.name||'list')+'...'});cnt=h('span',{class:'lv-n'});
+  bar=h('div',{class:'lv-bar'},inp,cnt);bar.hidden=true;el.before(bar);
+  inp.addEventListener('input',function(){show=per;apply()})}
+ more.addEventListener('click',function(){show+=per;apply()});
+ function items(){return [].slice.call(el.children).filter(function(c){return c.matches(r.item||'*')&&!c.classList.contains('notice')&&!c.classList.contains('em')})}
+ function setup(c){c._lv=1;
+  if(r.sum||r.head!=null){c.classList.add('lv-t');
+   var k=[].slice.call(c.children),head=r.sum?0:r.head;
+   if(r.sum){var s=r.sum(c);if(s){c.insertBefore(h('div',{class:'lv-sum'},h('b',{},s[0]),s[1]?h('small',{},s[1]):null),c.firstChild);if(s[2])c.classList.add('lv-open')}else head=k.length}
+   k.forEach(function(x,i){if(i>=head)x.classList.add('lv-rest')});
+   c.addEventListener('click',function(e){var t=e.target;if(t!==c){while(t&&t.parentNode!==c)t=t.parentNode;if(!t||t.classList.contains('lv-rest'))return}c.classList.toggle('lv-open')})}}
+ function apply(){
+  var all=items(),skip=r.skip||0,toks=inp?inp.value.toLowerCase().split(/\s+/).filter(Boolean):[],m=0,shown=0,total=0;
+  all.forEach(function(c,i){
+   if(!c._lv)setup(c);
+   if(i<skip){c.classList.remove('lv-h');return}
+   total++;
+   if(toks.length){var t=txt(c);if(!toks.every(function(x){return t.indexOf(x)>-1})){c.classList.add('lv-h');return}}
+   m++;var keep=m<=show||c.classList.contains('on');c.classList.toggle('lv-h',!keep);if(keep)shown++});
+  more.hidden=m<=show;more.textContent='Show more ('+(m-show)+' left)';
+  if(bar){bar.hidden=total<6&&!(inp&&inp.value);cnt.textContent=total?'Showing '+shown+' of '+m+(m<total?' (from '+total+')':''):''}}
+ new MutationObserver(apply).observe(el,{childList:true});apply()}
+function scan(){Q=0;RULES.forEach(function(r){[].forEach.call(document.querySelectorAll(r.sel),function(el){attach(el,r)})})}
+new MutationObserver(function(){if(!Q)Q=requestAnimationFrame(scan)}).observe(document.body,{childList:true,subtree:true});
+window.LV={add:function(r){RULES.push(r);scan()}};
+function pv(c){var g=function(n){var i=c.querySelector('input[name='+n+']');return i?i.value.trim():''},a=c.querySelector('input[name=act]');
+ return [g('name')||'New product',[g('code'),g('cat'),g('price')?'\u09F3'+g('price'):'',a&&!a.checked?'archived':''].filter(Boolean).join(' \u00B7 '),!g('name')]}
+LV.add({sel:'#ol',item:'.card',name:'orders',head:1});
+LV.add({sel:'#dvl',item:'.card',name:'deliveries',head:1});
+LV.add({sel:'#pl',item:'.card',name:'products',sum:pv});
+LV.add({sel:'#lst',item:'button.row',bar:false});
+LV.add({sel:'#rxb',item:'.rx-item',bar:false});
+LV.add({sel:'#qltb',item:'.card',name:'test cases',head:1,skip:1});
+})();
 })();
 </script>
 </body>
