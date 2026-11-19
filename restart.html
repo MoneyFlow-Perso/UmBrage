@@ -3057,6 +3057,34 @@ function fix(){Q=0;var a=document.getElementById('rxa');if(!a||a._adm)return;a._
  lb.after(h('small',{class:'rx-hint',style:'display:block;margin:-4px 0 8px'},on?'Only the admin can edit this reply while Answer automatically is on. Untick it to edit; the admin can switch it on again.':'Only the admin can turn on Answer automatically.'))}
 new MutationObserver(function(){if(!Q)Q=requestAnimationFrame(fix)}).observe(document.body,{childList:true,subtree:true});
 })();
+    /* ===== Emergency stop (v19): a red "Stop Auto" button shows in the top bar only while Auto is on. It can only turn Auto off. ===== */
+(function(){
+var bt=null;
+function hm(t,d){return t?String(t).slice(0,5):d}
+function nowHM(){return new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Dhaka',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date())}
+function inWin(s,e,n){if(s===e)return false;return s<e?(n>=s&&n<e):(n>=s||n<e)}
+function isOn(s){return !!(s&&(s.auto_mode||(s.sleep_auto&&inWin(hm(s.sleep_start,'23:00'),hm(s.sleep_end,'08:00'),nowHM()))))}
+function say(t,bad){var s=document.getElementById('st');if(!s)return;s.style.borderColor=bad?'#c0392b':'';s.textContent=t}
+function btn(){
+ if(bt&&document.body.contains(bt))return bt;
+ var ta=document.querySelector('.top-actions');if(!ta)return null;
+ bt=h('button',{type:'button',id:'stopauto',style:'display:none;background:#3a1212;border:1px solid #c0392b;color:#ffb4a8;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer'},'\u25A0 Stop Auto');
+ bt.addEventListener('click',stop);ta.insertBefore(bt,ta.firstChild);return bt}
+async function look(){
+ var b=btn();if(!b)return;
+ if(!(typeof sb!=='undefined'&&sb&&typeof BIZ!=='undefined'&&BIZ)){b.style.display='none';return}
+ try{var r=await sb.from('umb_settings').select('auto_mode,sleep_auto,sleep_start,sleep_end').eq('business_id',BIZ).maybeSingle();
+  b.style.display=(r&&!r.error&&isOn(r.data))?'':'none'}catch(e){}}
+async function stop(){
+ if(!(typeof sb!=='undefined'&&sb&&BIZ))return;
+ if(!confirm('Stop Auto now? The server will stop answering by itself until an admin turns it on again.'))return;
+ bt.disabled=true;
+ try{var r=await sb.rpc('umb_auto_stop',{p_business_id:BIZ});if(r.error)throw r.error;say('Auto stopped. Only an admin can turn it on again.')}
+ catch(e){say('Could not stop Auto: '+((e&&e.message)||e),1)}
+ bt.disabled=false;look()}
+if(typeof loadAll==='function'){var lo=loadAll;loadAll=async function(){var x=await lo.apply(this,arguments);look();return x}}
+setInterval(look,30000);setTimeout(look,1500);
+})();
 })();
 </script>
 </body>
