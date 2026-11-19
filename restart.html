@@ -3010,6 +3010,28 @@ LV.add({sel:'#lst',item:'button.row',bar:false});
 LV.add({sel:'#rxb',item:'.rx-item',bar:false});
 LV.add({sel:'#qltb',item:'.card',name:'test cases',head:1,skip:1});
 })();
+  /* ===== Admin-only settings (v16): Company profile, Brand knowledge, Backup and the connection keys are for the admin. window.isAdmin() is available to any page ===== */
+(function(){
+var ADM=null,KEY='';
+function locked(){return !!(sb&&BIZ)&&ADM!==true}
+function paint(){var L=locked();
+ [].slice.call(document.querySelectorAll('#t-set .card')).forEach(function(c){if(c.id==='cocard'||c.querySelector('#kp')||c.querySelector('#ex'))c.style.display=L?'none':''});
+ ['label[for=cu]','#cu','label[for=ck]','#ck'].forEach(function(s){var e=document.querySelector(s);if(e)e.style.display=L?'none':''});
+ var n=document.getElementById('admn'),cs=document.getElementById('cst');
+ if(!n&&cs){n=h('small',{id:'admn',style:'display:block;margin-top:8px;color:var(--muted)'},'Company profile, Brand knowledge, Backup and the connection keys are for the admin only.');cs.after(n)}
+ if(n)n.style.display=L?'':'none'}
+async function check(){
+ var k=(typeof UID!=='undefined'?UID:'')+'|'+BIZ;
+ if(!(sb&&BIZ)){ADM=null;KEY='';paint();return}
+ if(k===KEY&&ADM!==null){paint();return}
+ KEY=k;ADM=null;paint();
+ try{var r=await sb.rpc('is_business_admin',{p_business_id:BIZ});ADM=(r&&!r.error)?!!r.data:(ROLE==='owner'||ROLE==='admin')}
+ catch(e){ADM=(ROLE==='owner'||ROLE==='admin')}
+ window.UMB_ADM=ADM;paint()}
+window.isAdmin=function(){return ADM===true};
+var la=loadAll;loadAll=async function(){var x=await la.apply(this,arguments);check();return x};
+var cx=document.getElementById('cx');if(cx)cx.addEventListener('click',function(){setTimeout(function(){ADM=null;KEY='';paint()},80)});
+paint()})();
 })();
 </script>
 </body>
