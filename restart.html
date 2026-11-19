@@ -3032,6 +3032,21 @@ window.isAdmin=function(){return ADM===true};
 var la=loadAll;loadAll=async function(){var x=await la.apply(this,arguments);check();return x};
 var cx=document.getElementById('cx');if(cx)cx.addEventListener('click',function(){setTimeout(function(){ADM=null;KEY='';paint()},80)});
 paint()})();
+ /* ===== Auto & Settings pill is admin-only (v17): staff see a short note and can still open the Auto Log ===== */
+(function(){
+var prev=window.RIX&&window.RIX.pill;window.RIX=window.RIX||{};
+function note(b){
+ b.innerHTML='<div class="rx-box"><div class="rx-st">AUTO &amp; SETTINGS</div><div class="rx-sub">Auto mode, sleeping hours and holding replies are for the admin only. You can still read what the server did in the Auto Log tab.</div><div class="rx-act"><button type="button" class="gh" id="aulog2">Open Auto Log</button></div></div>';
+ b.querySelector('#aulog2').addEventListener('click',function(){var t=[].slice.call(document.querySelectorAll('#t-rx button')).filter(function(x){return x.textContent.trim()==='Auto Log'})[0];if(t)t.click()})}
+window.RIX.pill=function(pill,b,edit){
+ if(pill!=='aset'||!(typeof sb!=='undefined'&&sb&&BIZ))return prev?prev(pill,b,edit):false;
+ if(window.isAdmin&&window.isAdmin())return prev?prev(pill,b,edit):false;
+ b.innerHTML='<div class="rx-box"><div class="rx-sub">Checking access...</div></div>';
+ sb.rpc('is_business_admin',{p_business_id:BIZ}).then(function(r){
+  var a=(r&&!r.error)?!!r.data:(ROLE==='owner'||ROLE==='admin');
+  if(a){if(prev)prev(pill,b,edit)}else note(b)},function(){note(b)});
+ return true};
+})();
 })();
 </script>
 </body>
