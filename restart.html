@@ -1802,7 +1802,7 @@ var KEYT='soon:Reply Intelligence',PILL='lib',EDIT=false,CUR=null,TK=0,ROWS=[],P
 var CAT=['Products','Pricing','Delivery','Returns and exchange','Customer support','Sales and conversion','Brand identity','Promotions','Operations','FAQ'];
 var CH=[['whatsapp','WhatsApp'],['instagram','Instagram'],['messenger','Messenger'],['website','Website']];
 var LGS=[['bn','Bangla (also Banglish)'],['en','English']];
-var PL=[['ovw','Overview'],['lib','Reply Library'],['sug','Suggestions'],['qlab','Quality Lab'],['aset','Auto & Settings']];
+var PL=[['ovw','Overview'],['lib','Reply Library'],['sug','Suggestions'],['qlab','Quality Lab'],['aset','Auto & Settings'],['alog','Auto Log']];
 var IC={text:'\u{1F4AC}',photo:'\u{1F5BC}',product:'\u{1F6CD}'};
 var st=document.createElement('style');
 st.textContent=`
@@ -2211,8 +2211,9 @@ bx('<div class="rx-st">4 \u00B7 WHAT AUTO DOES</div>'+
 '<div class="rx-step"><div class="rx-n">\u2713</div><div class="rx-sub">Answers price, sizes, stock yes or no, delivery charge and exchange policy, from live data and your saved replies that have Answer automatically ticked.</div></div>'+
 '<div class="rx-step"><div class="rx-n">?</div><div class="rx-sub">If the product is unclear it asks which product. If it does not understand, it sends the holding reply and flags you. No guessing.</div></div>'+
 '<div class="rx-step"><div class="rx-n">\u2715</div><div class="rx-sub">Never takes orders, never talks about money or payment commitments, never answers outside the WhatsApp 24-hour window.</div></div>')+
-bx('<div class="rx-st">5 \u00B7 LOG</div>'+(L.length?L.slice(0,30).map(function(x){return '<div style="padding:8px 0;border-top:1px solid var(--line)"><div style="font-size:12px"><b>'+esc(x.decision)+'</b> <span class="rx-c mu">'+esc(x.mode)+'</span>'+(x.sent?'<span class="rx-c">sent</span>':'')+' <span style="color:var(--muted)">'+fmt(x.created_at)+'</span></div>'+(x.reason?'<div class="rx-hint">'+esc(x.reason)+'</div>':'')+(x.reply_preview?'<div class="rx-rp">'+esc(x.reply_preview)+'</div>':'')+'</div>'}).join(''):'<div class="rx-sub">Nothing logged yet.</div>'));
+bx('<div class="rx-st">5 \u00B7 LOG</div><div class="rx-sub">The log has its own tab now: newest first, with filters.</div><div class="rx-act"><button type="button" class="gh" id="aulog">Open Auto Log</button></div>');
 var am=b.querySelector('#aum');
+b.querySelector('#aulog').addEventListener('click',function(){var t=[].slice.call(document.querySelectorAll('#t-rx button')).filter(function(x){return x.textContent.trim()==='Auto Log'})[0];if(t)t.click()});
 am.addEventListener('change',async function(){
 try{if(am.checked){var first=!ST.auto_shadow_until;
 if(!confirm(first?'Turn Auto mode on? It starts with a 7-day shadow run: it only logs what it would send, nothing goes out.':'Turn Auto mode on? It will answer safe questions by itself, with no review.')){am.checked=false;return}
@@ -2891,6 +2892,67 @@ async function run(){
    res.replaceChildren.apply(res,allx.length?allx:[h('div',{class:'gs-n'},'Nothing found for "'+q+'".')]);res.hidden=false}
   catch(e){if(my===SEQ)res.append(h('div',{class:'gs-n'},'Orders could not be searched: '+((e&&e.message)||e)))}}
  else draw(null)}
+})();
+  /* ===== Auto Log pill (v14): newest first, compact rows, filters, Show more ===== */
+(function(){
+var prev=window.RIX&&window.RIX.pill,TK=0,ALL=[],SHOW=15,FL='all',EXP={};
+window.RIX=window.RIX||{};
+window.RIX.pill=function(pill,b,edit){if(pill!=='alog')return prev?prev(pill,b,edit):false;load(b);return true};
+var css=document.createElement('style');
+css.textContent='#t-rx .al-d{font-size:11px;letter-spacing:1.1px;text-transform:uppercase;color:var(--green);margin:14px 2px 4px}'
++'#t-rx .al-r{display:block;width:100%;text-align:left;background:linear-gradient(145deg,#11281fdb,#081711e8);border:1px solid var(--line);border-radius:12px;padding:9px 12px;margin:0 0 6px;color:var(--text);cursor:pointer}'
++'#t-rx .al-r:hover{border-color:#39c98c66}'
++'#t-rx .al-1{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;overflow:hidden}'
++'#t-rx .al-t{font-size:12px;color:var(--muted);flex:none;min-width:38px}'
++'#t-rx .al-1 .rx-c{margin:0;flex:none}'
++'#t-rx .al-2{font-size:12px;color:#cfe3d6;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
++'#t-rx .al-x{padding:4px 12px 10px;margin:-2px 0 8px;border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;background:#0b130f;font-size:13px;line-height:1.5;overflow-wrap:anywhere}'
++'#t-rx .al-x .rx-rp{margin:6px 0 4px}';
+document.head.append(css);
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+var TZ='Asia/Dhaka';
+function hmm(t){return new Date(t).toLocaleTimeString('en-GB',{timeZone:TZ,hour:'2-digit',minute:'2-digit',hourCycle:'h23'})}
+function dk(t){return new Date(t).toLocaleDateString('en-CA',{timeZone:TZ})}
+function dname(t){var k=dk(t);if(k===dk(Date.now()))return'Today';if(k===dk(Date.now()-864e5))return'Yesterday';return new Date(t).toLocaleDateString('en-GB',{timeZone:TZ,day:'numeric',month:'short'})}
+var FLT=[['all','All',function(){return true}],
+ ['would','Would send',function(x){return x.mode==='shadow'&&x.decision==='send'}],
+ ['sent','Sent',function(x){return !!x.sent}],
+ ['need','Needed you',function(x){return x.decision==='hold'||x.decision==='flag'}],
+ ['skip','Skipped',function(x){return x.decision==='skip'}]];
+function fn(k){return FLT.filter(function(f){return f[0]===k})[0][2]}
+async function load(b){var my=++TK;
+ if(!(typeof sb!=='undefined'&&sb&&BIZ)){b.innerHTML='<div class="rx-box"><div class="rx-sub">Connect Supabase in Settings &amp; Data to see the log.</div></div>';return}
+ b.innerHTML='<div class="rx-box"><div class="rx-sub">Loading...</div></div>';
+ try{var g=await sb.from('umb_auto_log').select('*').eq('business_id',BIZ).order('created_at',{ascending:false}).limit(300);
+  if(my!==TK)return;if(g.error)throw g.error;ALL=g.data||[];SHOW=15;EXP={};shell(b)}
+ catch(e){if(my===TK)b.innerHTML='<div class="rx-box">Could not load: '+esc((e&&e.message)||e)+'</div>'}}
+function shell(b){
+ var top=h('div',{style:'display:flex;justify-content:space-between;align-items:center;gap:8px;margin:2px 0 10px'},
+  h('div',{class:'rx-hint',style:'margin:0'},'Newest first. Tap a line for details.'),
+  h('button',{type:'button',class:'gh',style:'padding:6px 12px;font-size:12px',onclick:function(){load(b)}},'Refresh'));
+ var chips=h('div',{class:'chips',style:'border:0;padding:0 0 10px;flex-wrap:wrap'}),list=h('div',{});
+ b.replaceChildren(top,chips,list);paint(chips,list)}
+function paint(chips,list){
+ chips.replaceChildren.apply(chips,FLT.map(function(f){var n=ALL.filter(f[2]).length;
+  return h('button',{type:'button',class:'gh'+(FL===f[0]?' on':''),onclick:function(){FL=f[0];SHOW=15;paint(chips,list)}},f[1]+' '+n)}));
+ var rows=ALL.filter(fn(FL)),vis=rows.slice(0,SHOW),kids=[],last='';
+ if(!rows.length){list.replaceChildren(h('div',{class:'rx-box'},h('div',{class:'rx-sub'},ALL.length?'Nothing in this filter.':'Nothing logged yet.')));return}
+ vis.forEach(function(x){
+  var d=dname(x.created_at);if(d!==last){kids.push(h('div',{class:'al-d'},d));last=d}
+  var cls=x.decision==='send'?'rx-c':(x.decision==='hold'||x.decision==='flag')?'rx-c am':'rx-c mu';
+  var row=h('button',{type:'button',class:'al-r'});
+  row.innerHTML='<div class="al-1"><span class="al-t">'+hmm(x.created_at)+'</span><span class="'+cls+'">'+esc(x.decision)+'</span><span class="rx-c mu">'+esc(x.mode)+'</span>'+(x.sent?'<span class="rx-c">sent</span>':'')+'</div>'+(x.reason?'<div class="al-2">'+esc(x.reason)+'</div>':'');
+  var ex=h('div',{class:'al-x'});ex.hidden=!EXP[x.id||x.created_at];
+  ex.innerHTML=(x.reason?'<div>'+esc(x.reason)+'</div>':'')+(x.reply_preview?'<div class="rx-rp">'+esc(x.reply_preview)+'</div>':'')+'<div class="rx-hint">'+new Date(x.created_at).toLocaleString('en-GB',{timeZone:TZ,day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'})+'</div>';
+  var cv=x.conversation_id&&typeof convs!=='undefined'?convs.filter(function(c){return c.id===x.conversation_id})[0]:null;
+  if(cv){var ob=h('button',{type:'button',class:'gh',style:'margin-top:8px'},'Open chat');
+   ob.addEventListener('click',function(e){e.stopPropagation();tab('inbox');cur=cv.id;cv.unread=0;if(typeof persist==='function')persist();document.body.classList.add('chat');render()});ex.append(ob)}
+  row.addEventListener('click',function(){var k=x.id||x.created_at;EXP[k]=!EXP[k];ex.hidden=!EXP[k]});
+  kids.push(row,ex)});
+ if(rows.length>SHOW){var more=h('button',{type:'button',class:'gh',style:'width:100%;margin-top:6px'},'Show more ('+(rows.length-SHOW)+' left)');
+  more.addEventListener('click',function(){SHOW+=15;paint(chips,list)});kids.push(more)}
+ else if(ALL.length>=300)kids.push(h('div',{class:'rx-hint',style:'text-align:center;margin-top:8px'},'Showing the latest 300 entries.'));
+ list.replaceChildren.apply(list,kids)}
 })();
 })();
 </script>
