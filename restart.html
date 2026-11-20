@@ -3286,6 +3286,28 @@ if(typeof loadAll==='function'){var lo=loadAll;loadAll=async function(){var r=aw
 setInterval(function(){check().then(fix)},30000);
 setTimeout(function(){check().then(fix)},1500);
 })();
+      /* ===== Ask UmBrage is for the admin only (v24): staff do not see its tab, and cannot open it ===== */
+(function(){
+var ASK='soon:Ask UmBrage',OK=null,KEY='',Q=0;
+async function check(){
+ if(!(sb&&BIZ&&UID)){OK=null;KEY='';return null}
+ var k=BIZ+'|'+UID;if(k===KEY&&OK!==null)return OK;
+ KEY=k;OK=null;
+ try{var r=await sb.rpc('is_business_admin',{p_business_id:BIZ});OK=(r&&!r.error)?!!r.data:false}catch(e){OK=false}
+ return OK}
+function fix(){Q=0;var hide=OK===false;
+ [].forEach.call(document.querySelectorAll('[data-t="'+ASK+'"],[data-go="'+ASK+'"]'),function(b){b.style.display=hide?'none':''})}
+new MutationObserver(function(){if(!Q)Q=requestAnimationFrame(fix)}).observe(document.body,{childList:true,subtree:true});
+var _t=tab;
+tab=function(t){
+ if(t===ASK&&OK!==true){
+  if(OK===false){_t('dash');return}
+  check().then(function(a){_t(a===false?'dash':t);fix()});return}
+ return _t.apply(this,arguments)};
+if(typeof loadAll==='function'){var lo=loadAll;loadAll=async function(){var r=await lo.apply(this,arguments);await check();fix();return r}}
+setInterval(function(){check().then(fix)},30000);
+setTimeout(function(){check().then(fix)},1500);
+})();
 })();
 </script>
 </body>
