@@ -3308,6 +3308,16 @@ if(typeof loadAll==='function'){var lo=loadAll;loadAll=async function(){var r=aw
 setInterval(function(){check().then(fix)},30000);
 setTimeout(function(){check().then(fix)},1500);
 })();
+    /* ===== Extra costs are admin-only (v25): staff do not see Net today, Expenses today or + Add expense on Daily ===== */
+(function(){
+var Q=0;
+function fix(){Q=0;var d=(window.isAdmin&&window.isAdmin())?'':'none',x=document.getElementById('xc');if(!x)return;
+ [].forEach.call(x.querySelectorAll('.rs-sub,.xbig'),function(e){if(e.classList.contains('xbig')||(e.textContent||'').trim()==='NET TODAY')e.style.display=d});
+ [].forEach.call(x.querySelectorAll('.xr'),function(r){var s=r.querySelector('span');if(s&&s.textContent.trim()==='Expenses today')r.style.display=d});
+ var b=document.getElementById('xadd');if(b&&b.parentNode)b.parentNode.style.display=d}
+new MutationObserver(function(){if(!Q)Q=requestAnimationFrame(fix)}).observe(document.body,{childList:true,subtree:true});
+setInterval(fix,2000);setTimeout(fix,500);
+})();
 })();
 </script>
 </body>
