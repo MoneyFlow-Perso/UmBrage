@@ -2220,6 +2220,7 @@ if(!confirm(first?'Turn Auto mode on? It starts with a 7-day shadow run: it only
 var o={auto_mode:true};if(first)o.auto_shadow_until=week();
 await save(o);msg(first?'Auto mode on, shadow run for 7 days.':'Auto mode on.')}
 else{await save({auto_mode:false});msg('Auto mode off.')}
+    else{if(!confirm('Turn Auto mode off? The server will stop answering by itself.')){am.checked=true;return}await save({auto_mode:false});msg('Auto mode off.')}
 aset(b)}catch(e){am.checked=!am.checked;err(e)}});
 var bg=b.querySelector('#aug');
 if(bg)bg.addEventListener('click',async function(){
@@ -2227,8 +2228,10 @@ if(!confirm('End the shadow run and go live? Auto mode will really send replies.
 try{await save({auto_shadow_until:new Date().toISOString()});msg('Shadow run ended.');aset(b)}catch(e){err(e)}});
 var br=b.querySelector('#aur');
 if(br)br.addEventListener('click',async function(){
+  if(!confirm('Start a 7-day shadow run? Auto will only log, nothing is sent.'))return;
 try{await save({auto_shadow_until:week()});msg('Shadow run started for 7 days.');aset(b)}catch(e){err(e)}});
 b.querySelector('#aux').addEventListener('click',async function(){
+  if(!confirm('Stop all auto now? The server will stop answering by itself (Auto mode and sleeping hours).'))return;
 try{await save({auto_mode:false,sleep_auto:false});msg('All auto stopped.');aset(b)}catch(e){err(e)}});
 b.querySelector('#aus').addEventListener('click',async function(){
 var on=b.querySelector('#auz').checked,s=b.querySelector('#aua').value||'23:00',e=b.querySelector('#aub').value||'08:00';
