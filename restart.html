@@ -2219,7 +2219,6 @@ try{if(am.checked){var first=!ST.auto_shadow_until;
 if(!confirm(first?'Turn Auto mode on? It starts with a 7-day shadow run: it only logs what it would send, nothing goes out.':'Turn Auto mode on? It will answer safe questions by itself, with no review.')){am.checked=false;return}
 var o={auto_mode:true};if(first)o.auto_shadow_until=week();
 await save(o);msg(first?'Auto mode on, shadow run for 7 days.':'Auto mode on.')}
-else{await save({auto_mode:false});msg('Auto mode off.')}
     else{if(!confirm('Turn Auto mode off? The server will stop answering by itself.')){am.checked=true;return}await save({auto_mode:false});msg('Auto mode off.')}
 aset(b)}catch(e){am.checked=!am.checked;err(e)}});
 var bg=b.querySelector('#aug');
