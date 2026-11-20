@@ -3214,7 +3214,7 @@ async function saveCost(id,btn){
  var i=sec.querySelector('input[data-cp="'+id+'"]'),v=Number(i&&i.value);
  if(!i||i.value===''||!(v>=0)){say('Enter a cost price',1);return}
  btn.disabled=true;
- var r=await sb.from('umb_products').update({cost_price:v}).eq('id',id).eq('business_id',BIZ).select('id');
+  var r=await sb.from('umb_product_costs').upsert({product_id:id,business_id:BIZ,cost_price:v,updated_at:new Date().toISOString()}).select('product_id');
  btn.disabled=false;
  if(r.error){say(r.error.message,1);return}if(!r.data||!r.data.length){say('Not saved (no permission?)',1);return}
  say('Cost price saved. New orders use it; past orders keep the cost they were sold at.');load()}
