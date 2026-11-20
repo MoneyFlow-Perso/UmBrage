@@ -3106,6 +3106,148 @@ function fix(){Q=0;var a=adm();[].forEach.call(document.querySelectorAll('button
 delProd=function(p){if(!adm()){var s=document.getElementById('st');if(s){s.style.borderColor='#c0392b';s.textContent='Only the admin can delete a product for good. You can untick Active instead.'}return}return d0.apply(this,arguments)};
 new MutationObserver(function(){if(!Q)Q=requestAnimationFrame(fix)}).observe(document.body,{childList:true,subtree:true});
 })();
+    /* ===== Finance (v21): admin-only page with profit, extra costs, profit chart, profit per product, cost prices and CSV ===== */
+(function(){
+var KEY='soon:Finance',R='30',D=null,busy=0,RG=[['7','7 days'],['30','30 days'],['m','This month'],['l','Last month'],['90','90 days']];
+function E(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function T(n){n=Math.round(Number(n)||0);return (n<0?'-':'')+'\u09f3'+Math.abs(n).toLocaleString('en-IN')}
+function ymd(d){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dhaka',year:'numeric',month:'2-digit',day:'2-digit'}).format(d)}
+function dh(s){return new Date(s+'T00:00:00+06:00')}
+function span(){var t=ymd(new Date()),m=t.slice(0,8)+'01',e=new Date(dh(t).getTime()+864e5),f;
+ if(R==='7')f=new Date(e.getTime()-7*864e5);else if(R==='90')f=new Date(e.getTime()-90*864e5);else if(R==='m')f=dh(m);
+ else if(R==='l'){e=dh(m);var y=+m.slice(0,4),mo=+m.slice(5,7)-1;if(mo<1){mo=12;y--}f=dh(y+'-'+(mo<10?'0':'')+mo+'-01')}
+ else f=new Date(e.getTime()-30*864e5);
+ return {f:f,e:e}}
+function dl(c,p){c=Number(c)||0;p=Number(p)||0;if(!p)return '<span class="ovd">no earlier data to compare</span>';var x=(c-p)/Math.abs(p)*100;
+ return '<span class="ovd '+(x>=0?'u':'d')+'">'+(x>=0?'\u25B2 ':'\u25BC ')+Math.abs(x).toFixed(1)+'% vs previous period</span>'}
+function card(l,v,x,hi){return '<div class="rs-card p"'+(hi?' style="border-color:var(--green)"':'')+'><div class="rs-sub">'+l+'</div><div class="kv">'+v+'</div>'+(x||'')+'</div>'}
+function head(t,x){return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:22px 0 8px"><div class="rs-sub" style="font-weight:700;letter-spacing:.08em;margin:0">'+t+'</div>'+(x||'')+'</div>'}
+function warn(t){return '<div style="margin-top:8px;padding:9px 11px;border:1px solid #6b5412;border-radius:10px;background:#2a2108;color:#fbbf24;font-size:13px;line-height:1.5">'+t+'</div>'}
+function say(t,bad){var m=document.getElementById('finm');if(!m)return;m.style.color=bad?'#fb7185':'';m.textContent=t||''}
+function body(x){var b=document.getElementById('finb');if(b)b.innerHTML=x}
+var st=document.createElement('style');
+st.textContent='#t-fin table{width:100%;border-collapse:collapse;font-size:13px}#t-fin th,#t-fin td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}#t-fin th:first-child,#t-fin td:first-child{text-align:left;white-space:normal}#t-fin th{color:var(--muted);font-weight:600;font-size:11px;letter-spacing:.06em}#t-fin .fx{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}#t-fin .fbar{height:6px;background:#17261d;border-radius:4px;margin:2px 0 8px}#t-fin .fbar i{display:block;height:6px;background:#19f39b;border-radius:4px}#t-fin .fcp{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}#t-fin .fcp span{flex:1}#t-fin .fcp input{width:96px}';
+document.head.appendChild(st);
+var sec=document.createElement('section');sec.id='t-fin';sec.hidden=true;
+sec.innerHTML='<div class="rs-eyebrow" style="margin-top:20px">FINANCE</div><h1 class="rs-h1">Profit and costs</h1><div class="rs-sub">Only the admin can see this page.</div><div id="finr" style="display:flex;flex-wrap:wrap;gap:6px;margin:12px 0"></div><div id="finm" class="rs-sub"></div><div id="finb"></div>';
+var so=document.getElementById('t-soon');if(so)so.after(sec);else document.querySelector('main').append(sec);
+function chips(){var c=document.getElementById('finr');if(c)c.innerHTML=RG.map(function(x){return '<button type="button" class="gh'+(x[0]===R?' on':'')+'" data-r="'+x[0]+'">'+x[1]+'</button>'}).join('')}
+function render(){
+ var d=D,t=d.totals,p=d.prev,x='',cp=d.catalog||[];
+ var mg=t.revenue>0?Math.round(t.net_profit/t.revenue*1000)/10:0;
+ x+='<div class="rs-grid tiles" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">'
+  +card('NET PROFIT',T(t.net_profit),dl(t.net_profit,p.net_profit),1)+card('SALES AFTER DISCOUNT',T(t.revenue),dl(t.revenue,p.revenue))
+  +card('PRODUCT COST',T(t.cogs),dl(t.cogs,p.cogs))+card('GROSS PROFIT',T(t.gross),dl(t.gross,p.gross))
+  +card('DELIVERY CHARGES',T(t.delivery),dl(t.delivery,p.delivery))+card('EXTRA COSTS',T(t.extra),dl(t.extra,p.extra))
+  +card('MARGIN',mg+'%','<span class="ovd">net profit / sales</span>')+'</div>';
+ x+='<div class="rs-sub" style="margin-top:8px;font-size:12px">Net profit = sales after discounts - product cost + delivery charges - extra costs. Cancelled, draft and returned orders are not counted.</div>';
+ if(t.no_cost_lines>0)x+=warn('\u26A0 '+t.no_cost_lines+' sold line'+(t.no_cost_lines===1?' has':'s have')+' no cost price, so profit looks too high. Set the cost prices below.');
+ var neg=(d.products||[]).filter(function(q){return q.profit<0}).map(function(q){return E(q.name)});
+ if(neg.length)x+=warn('\u26A0 Sold below cost in this period: '+neg.join(', ')+'.');
+ if(!(t.extra>0))x+=warn('No extra costs recorded in this period. Add ads, courier, packaging or rent to see your real profit.');
+ x+='<div class="rs-card p" style="margin-top:12px"><div class="rs-sub">DAILY PROFIT</div><div id="finch" style="height:250px">'+(window.echarts?'':'<div class="rs-sub">The chart library did not load.</div>')+'</div></div>';
+ x+=head('EXTRA COSTS','<button type="button" class="pri" id="finadd">+ Add cost</button>');
+ var tc=(d.categories||[]).reduce(function(s,c){return s+(Number(c.amount)||0)},0);
+ x+=(d.categories||[]).length?(d.categories||[]).map(function(c){var w=tc>0?Math.round((Number(c.amount)||0)/tc*100):0;
+  return '<div class="fx" style="border:0;padding-bottom:0"><span>'+E(c.category)+' \u00B7 '+c.n+' entr'+(c.n===1?'y':'ies')+'</span><b>'+T(c.amount)+'</b></div><div class="fbar"><i style="width:'+w+'%"></i></div>'}).join(''):'<div class="rs-sub">Nothing recorded for this period.</div>';
+ if((d.expenses||[]).length)x+='<div style="max-height:320px;overflow:auto;margin-top:8px">'+d.expenses.map(function(e){
+  return '<div class="fx"><span>'+E(e.day)+' \u00B7 <b>'+E(e.category)+'</b>'+(e.note?' \u00B7 '+E(e.note):'')+'</span><span><b>'+T(e.amount)+'</b> <button type="button" class="gh" data-xd="'+E(e.id)+'" style="padding:3px 8px;font-size:11px">Delete</button></span></div>'}).join('')+'</div>';
+ x+=head('PROFIT PER PRODUCT');
+ x+=(d.products||[]).length?'<div style="overflow-x:auto"><table><tr><th>Product</th><th>Units</th><th>Sales</th><th>Cost</th><th>Profit</th><th>Margin</th></tr>'+d.products.map(function(q){
+  var m=q.revenue>0?Math.round(q.profit/q.revenue*100)+'%':'-';
+  return '<tr><td>'+E(q.name)+(q.no_cost_lines>0?' <span style="color:#fbbf24" title="no cost price">\u26A0</span>':'')+'</td><td>'+q.qty+'</td><td>'+T(q.revenue)+'</td><td>'+T(q.cost)+'</td><td style="color:'+(q.profit<0?'#fb7185':'#19f39b')+'">'+T(q.profit)+'</td><td>'+m+'</td></tr>'}).join('')+'</table></div><div class="rs-sub" style="margin-top:6px;font-size:12px">Per product, before order discounts.</div>':'<div class="rs-sub">No sales in this period.</div>';
+ x+=head('COST PRICES');
+ x+='<div class="rs-sub" style="font-size:12px;margin-bottom:4px">A new cost price applies to new orders. Past orders keep the cost they were sold at.</div>';
+ x+=cp.length?cp.map(function(q){return '<div class="fcp"><span>'+E(q.name)+' <small style="color:var(--muted)">sells '+T(q.price)+(q.active?'':' \u00B7 inactive')+'</small></span><input type="number" min="0" inputmode="decimal" data-cp="'+E(q.id)+'" value="'+(Number(q.cost_price)>0?Number(q.cost_price):'')+'" placeholder="Cost"'+(Number(q.cost_price)>0?'':' style="border-color:#fbbf24"')+'><button type="button" class="gh" data-cs="'+E(q.id)+'">Save</button></div>'}).join(''):'<div class="rs-sub">No products yet.</div>';
+ x+='<p style="margin-top:18px"><button type="button" class="gh" id="fincsv">Download this report (CSV)</button></p>';
+ var oc=window.echarts&&document.getElementById('finch')&&echarts.getInstanceByDom(document.getElementById('finch'));if(oc)oc.dispose();
+ body(x);chart()}
+function chart(){var el=document.getElementById('finch');if(!el||!window.echarts||!D)return;
+ var sr=D.series||[],pr=sr.map(function(q){return Math.round(Number(q.profit)||0)}),cu=[],s=0;pr.forEach(function(v){s+=v;cu.push(s)});
+ var c=echarts.getInstanceByDom(el)||echarts.init(el);
+ c.setOption({animationDuration:600,grid:{left:6,right:10,top:30,bottom:4,containLabel:true},
+  legend:{data:['Daily profit','Running total'],textStyle:{color:'#9fb2a6'},top:0},tooltip:{trigger:'axis'},
+  xAxis:{type:'category',data:sr.map(function(q){return String(q.day).slice(5)}),axisLabel:{color:'#9fb2a6'}},
+  yAxis:[{type:'value',axisLabel:{color:'#9fb2a6'},splitLine:{lineStyle:{color:'#1d2b22'}}},{type:'value',show:false}],
+  series:[{name:'Daily profit',type:'bar',data:pr.map(function(v){return {value:v,itemStyle:{color:v<0?'#fb7185':'#19f39b'}}})},
+   {name:'Running total',type:'line',yAxisIndex:1,smooth:true,symbol:'none',data:cu,lineStyle:{color:'#fbbf24'}}]},true)}
+async function load(){
+ var my=++busy;
+ if(!(typeof sb!=='undefined'&&sb&&BIZ)){body('<div class="notice">Sign in from Settings &amp; Data to see Finance.</div>');return}
+ say('Loading...');var s=span();
+ try{var r=await sb.rpc('umb_finance_report',{p_business:BIZ,p_from:s.f.toISOString(),p_to:s.e.toISOString(),p_tz:'Asia/Dhaka'});
+  if(my!==busy)return;if(r.error)throw r.error;
+  if(!r.data){body('<div class="notice">Finance is for the admin only.</div>');say('');return}
+  D=r.data;say('');chips();render()}
+ catch(e){if(my===busy)say('Could not load: '+((e&&e.message)||e),1)}}
+async function isAdm(){
+ if(!(typeof sb!=='undefined'&&sb&&BIZ))return null;
+ try{var r=await sb.rpc('is_business_admin',{p_business_id:BIZ});return (r&&!r.error)?!!r.data:(ROLE==='owner'||ROLE==='admin')}catch(e){return ROLE==='owner'||ROLE==='admin'}}
+async function open(){
+ chips();
+ var a=await isAdm();
+ if(a===null){body('<div class="notice">Sign in from Settings &amp; Data to see Finance.</div>');return}
+ if(!a){body('<div class="notice">Finance is for the admin only.</div>');return}
+ load()}
+function addCost(){
+ var C=['Ads','Delivery','Packaging','Rent','Salary','Other'];((D&&D.categories)||[]).forEach(function(c){if(C.indexOf(c.category)<0)C.push(c.category)});
+ var a=h('input',{type:'number',min:'1',inputmode:'decimal',placeholder:'Amount'}),cs=h('select',{}),n=h('input',{placeholder:'For example Facebook ads, courier, bags'}),
+ dt=h('input',{type:'date',value:ymd(new Date())}),dlg=h('dialog',{}),sv=h('button',{class:'pri'},'Save'),em=h('small',{style:'color:#fb7185;display:block;margin-top:6px'});
+ C.forEach(function(c){cs.append(h('option',{value:c},c))});
+ sv.addEventListener('click',async function(){var v=Number(a.value);if(!(v>0)){em.textContent='Enter an amount';return}
+  sv.disabled=true;
+  var r=await sb.from('umb_expenses').insert({business_id:BIZ,spent_on:dt.value||ymd(new Date()),category:cs.value,amount:v,note:n.value.trim()||null,created_by:UID});
+  if(r.error){em.textContent=r.error.message;sv.disabled=false;return}
+  dlg.close();dlg.remove();load()});
+ dlg.append(h('b',{},'Add extra cost'),h('label',{},'Amount (\u09f3)'),a,h('label',{},'Category'),cs,h('label',{},'Note'),n,h('label',{},'Date'),dt,em,
+  h('p',{class:'ac'},h('button',{class:'gh',onclick:function(){dlg.close();dlg.remove()}},'Cancel'),sv));
+ document.body.append(dlg);dlg.showModal()}
+async function delX(id){
+ if(!confirm('Delete this cost entry?'))return;
+ var r=await sb.from('umb_expenses').delete().eq('id',id).eq('business_id',BIZ).select('id');
+ if(r.error){say(r.error.message,1);return}if(!r.data||!r.data.length){say('Not deleted (no permission?)',1);return}load()}
+async function saveCost(id,btn){
+ var i=sec.querySelector('input[data-cp="'+id+'"]'),v=Number(i&&i.value);
+ if(!i||i.value===''||!(v>=0)){say('Enter a cost price',1);return}
+ btn.disabled=true;
+ var r=await sb.from('umb_products').update({cost_price:v}).eq('id',id).eq('business_id',BIZ).select('id');
+ btn.disabled=false;
+ if(r.error){say(r.error.message,1);return}if(!r.data||!r.data.length){say('Not saved (no permission?)',1);return}
+ say('Cost price saved. New orders use it; past orders keep the cost they were sold at.');load()}
+function csvCell(v){v=v==null?'':String(v);if(/^[=+\-@]/.test(v)&&isNaN(Number(v)))v="'"+v;return /[",\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function csv(){
+ if(!D)return;var s=span(),t=D.totals,L=[],last=ymd(new Date(s.e.getTime()-1));
+ function row(a){L.push(a.map(csvCell).join(','))}
+ row(['UmBrage finance report']);row(['From',ymd(s.f),'To',last]);row([]);
+ row(['Summary']);[['Orders',t.orders],['Sales after discount',t.revenue],['Product cost',t.cogs],['Gross profit',t.gross],['Delivery charges',t.delivery],['Extra costs',t.extra],['Net profit',t.net_profit]].forEach(function(r){row(r)});row([]);
+ row(['Daily']);row(['Day','Sales','Product cost','Delivery charges','Extra costs','Net profit']);(D.series||[]).forEach(function(q){row([q.day,q.revenue,q.cogs,q.delivery,q.extra,q.profit])});row([]);
+ row(['Products']);row(['Product','Units','Sales','Cost','Profit']);(D.products||[]).forEach(function(q){row([q.name,q.qty,q.revenue,q.cost,q.profit])});row([]);
+ row(['Extra costs by category']);row(['Category','Entries','Amount']);(D.categories||[]).forEach(function(q){row([q.category,q.n,q.amount])});row([]);
+ row(['Extra cost entries']);row(['Date','Category','Note','Amount']);(D.expenses||[]).forEach(function(q){row([q.day,q.category,q.note,q.amount])});
+ var b=new Blob(['\uFEFF'+L.join('\r\n')],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');
+ a.href=URL.createObjectURL(b);a.download='umbrage-finance-'+ymd(s.f)+'-to-'+last+'.csv';document.body.append(a);a.click();
+ setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},800)}
+sec.addEventListener('click',function(e){var t=e.target,b;
+ if(b=t.closest('button[data-r]')){R=b.dataset.r;chips();load();return}
+ if(t.closest('#finadd')){addCost();return}
+ if(b=t.closest('button[data-xd]')){delX(b.dataset.xd);return}
+ if(b=t.closest('button[data-cs]')){saveCost(b.dataset.cs,b);return}
+ if(t.closest('#fincsv')){csv()}});
+window.addEventListener('resize',function(){var c=window.echarts&&echarts.getInstanceByDom(document.getElementById('finch'));if(c)c.resize()});
+var nb=document.createElement('button');nb.dataset.t=KEY;nb.style.display='none';nb.innerHTML='<span class="ico">\u09f3</span> Finance';
+var dn=document.querySelector('.sidebar [data-t="dash"]');if(dn)dn.after(nb);
+var fg=document.createElement('div');fg.id='fingo';fg.style.cssText='grid-column:1/-1;margin-top:6px;display:none';
+fg.innerHTML='<button class="rs-btn" data-go="'+KEY+'" style="width:100%">\u09f3 Finance - profit, extra costs, chart</button>';
+var ig=document.getElementById('insgo');if(ig)ig.after(fg);else{var an=document.querySelector('#ov .mvhint')||document.getElementById('ovm');if(an)an.before(fg)}
+nb.addEventListener('click',function(){tab(KEY)});
+async function sync(){var a=await isAdm();nb.style.display=a?'':'none';fg.style.display=a?'':'none'}
+var _tF=tab;
+tab=function(t){
+ if(t===KEY){_tF(t);var s=document.getElementById('t-soon');if(s)s.hidden=true;sec.hidden=false;var pt=document.getElementById('pt');if(pt)pt.textContent='Finance';open();return}
+ sec.hidden=true;_tF(t)};
+if(typeof loadAll==='function'){var lo=loadAll;loadAll=async function(){var r=await lo.apply(this,arguments);sync();return r}}
+setTimeout(sync,1500);
+})();
 })();
 </script>
 </body>
