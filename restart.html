@@ -3261,6 +3261,31 @@ function fix(){Q=0;var a=adm(),d=a?'':'none';
 new MutationObserver(function(){if(!Q)Q=requestAnimationFrame(fix)}).observe(document.body,{childList:true,subtree:true});
 setInterval(fix,2000);setTimeout(fix,500);
 })();
+      /* ===== Insights lives inside Ask UmBrage (v23): the Overview button is removed; Reports > "Open sales analysis" shows only for the admin or a staff member approved for Profit ===== */
+(function(){
+var KEYT='soon:Reports & Insights',ASK='soon:Ask UmBrage',OK=null,KEY='',Q=0;
+var st=document.createElement('style');st.textContent='#insgo{display:none!important}';document.head.appendChild(st);
+async function check(){
+ if(!(sb&&BIZ&&UID)){OK=null;KEY='';return false}
+ var k=BIZ+'|'+UID;if(k===KEY&&OK!==null)return OK;
+ KEY=k;OK=false;
+ try{var r=await sb.rpc('is_business_admin',{p_business_id:BIZ});
+  if(r&&!r.error&&r.data)OK=true;
+  else{var q=await sb.from('umb_ask_access').select('status,categories').eq('business_id',BIZ).eq('user_id',UID).maybeSingle();
+   var d=q&&q.data;OK=!!(d&&d.status==='approved'&&(d.categories||[]).indexOf('profit')>-1)}}
+ catch(e){OK=false}
+ return OK}
+function fix(){Q=0;var a=OK===true;
+ [].forEach.call(document.querySelectorAll('#t-ask [data-go="'+KEYT+'"]'),function(b){b.style.display=a?'':'none'})}
+new MutationObserver(function(){if(!Q)Q=requestAnimationFrame(fix)}).observe(document.body,{childList:true,subtree:true});
+var _t=tab;
+tab=function(t){
+ if(t===KEYT&&OK!==true){_t(ASK);check().then(function(a){if(a)_t(KEYT)});return}
+ return _t.apply(this,arguments)};
+if(typeof loadAll==='function'){var lo=loadAll;loadAll=async function(){var r=await lo.apply(this,arguments);await check();fix();return r}}
+setInterval(function(){check().then(fix)},30000);
+setTimeout(function(){check().then(fix)},1500);
+})();
 })();
 </script>
 </body>
