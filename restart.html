@@ -3321,6 +3321,46 @@ function fix(){Q=0;var d=(window.isAdmin&&window.isAdmin())?'':'none',x=document
 new MutationObserver(function(){if(!Q)Q=requestAnimationFrame(fix)}).observe(document.body,{childList:true,subtree:true});
 setInterval(fix,2000);setTimeout(fix,500);
 })();
+      /* ===== Auto control in Automation Center (v26): Auto status and the Stop Auto button live on the Automation Center page; the red top-bar button is removed ===== */
+(function(){
+var KEY='crm:automation',P=null,ST=null;
+var css=document.createElement('style');css.textContent='#stopauto{display:none!important}';document.head.appendChild(css);
+function hm(t,d){return t?String(t).slice(0,5):d}
+function nowHM(){return new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Dhaka',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date())}
+function inWin(s,e,n){if(s===e)return false;return s<e?(n>=s&&n<e):(n>=s||n<e)}
+function isOn(s){return !!(s&&(s.auto_mode||(s.sleep_auto&&inWin(hm(s.sleep_start,'23:00'),hm(s.sleep_end,'08:00'),nowHM()))))}
+function fmt(t){return new Date(t).toLocaleString('en-GB',{timeZone:'Asia/Dhaka',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
+function panel(){
+ if(P&&document.body.contains(P))return P;
+ var f=document.getElementById('crmf');if(!f||!f.parentNode)return null;
+ P=document.createElement('div');P.id='autoctl';P.className='rs-card p';P.style.cssText='display:none;margin:0 0 12px';
+ f.parentNode.insertBefore(P,f);return P}
+function draw(){var p=panel();if(!p)return;
+ if(!ST){p.innerHTML='<div class="rs-sub">AUTO CONTROL</div><div style="margin-top:6px;color:var(--muted);font-size:13px">Checking...</div>';return}
+ var on=isOn(ST),sh=!!(ST.auto_shadow_until&&new Date(ST.auto_shadow_until)>new Date());
+ p.innerHTML='<div class="rs-sub">AUTO CONTROL</div>'
+ +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:6px"><div><b style="font-size:16px;color:'+(on?'#19f39b':'#9fb2a6')+'">'+(on?(sh?'Auto is ON (shadow run: only logging)':'Auto is ON'):'Auto is OFF')+'</b>'
+ +(sh?'<div style="font-size:12px;color:var(--muted);margin-top:2px">Shadow run until '+fmt(ST.auto_shadow_until)+'</div>':'')+'</div>'
+ +(on?'<button type="button" id="autostop" style="background:#3a1212;border:1px solid #c0392b;color:#ffb4a8;border-radius:999px;padding:9px 14px;font-size:13px;font-weight:700">\u25A0 Stop Auto</button>':'')+'</div>'
+ +'<div style="font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5">Stop Auto only turns Auto off, and asks you first. Only the admin can turn it on (Reply Intelligence \u2192 Auto &amp; Settings).</div>'}
+async function look(){
+ if(!(typeof sb!=='undefined'&&sb&&typeof BIZ!=='undefined'&&BIZ))return;
+ try{var r=await sb.from('umb_settings').select('auto_mode,sleep_auto,sleep_start,sleep_end,auto_shadow_until').eq('business_id',BIZ).maybeSingle();
+  if(r&&!r.error){ST=r.data||{};draw()}}catch(e){}}
+async function stop(b){
+ if(!confirm('Stop Auto now? The server will stop answering by itself until an admin turns it on again.'))return;
+ b.disabled=true;
+ try{var r=await sb.rpc('umb_auto_stop',{p_business_id:BIZ});if(r.error)throw r.error}
+ catch(e){alert('Could not stop Auto: '+((e&&e.message)||e))}
+ await look()}
+document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('#autostop');if(b)stop(b)});
+var _t=tab;
+tab=function(t){_t.apply(this,arguments);
+ var on=String(t)===KEY,p=panel();
+ if(p){p.style.display=on?'':'none';var f=document.getElementById('crmf');if(f)f.style.height=on?'calc(100dvh - 240px)':''}
+ if(on){draw();look()}};
+setInterval(function(){var p=panel();if(p&&p.style.display!=='none')look()},20000);
+})();
 })();
 </script>
 </body>
