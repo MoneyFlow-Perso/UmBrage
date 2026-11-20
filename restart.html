@@ -3248,6 +3248,19 @@ tab=function(t){
 if(typeof loadAll==='function'){var lo=loadAll;loadAll=async function(){var r=await lo.apply(this,arguments);sync();return r}}
 setTimeout(sync,1500);
 })();
+      /* ===== Profit and cost hidden from staff (v22): Overview PROFIT card, profit tiles in the details drawer, Cost price field on Products, "Stock worth (cost)" on Daily ===== */
+(function(){
+var Q=0;
+function adm(){return !!(window.isAdmin&&window.isAdmin())}
+function lab(e){return (e&&e.textContent||'').trim()}
+function fix(){Q=0;var a=adm(),d=a?'':'none';
+ [].forEach.call(document.querySelectorAll('#ovk .rs-card'),function(c){if(lab(c.querySelector('.rs-sub'))==='PROFIT')c.style.display=d});
+ [].forEach.call(document.querySelectorAll('#dwb .dwk'),function(t){var l=lab(t.querySelector('small'));if(l==='Profit'||l==='Margin'||l==='Cost of goods')t.style.display=d});
+ [].forEach.call(document.querySelectorAll('input[name="cost"]'),function(i){if(i.parentNode)i.parentNode.style.display=d});
+ [].forEach.call(document.querySelectorAll('#xs .xr'),function(r){if(lab(r.querySelector('span')).indexOf('Stock worth (cost)')===0)r.style.display=d})}
+new MutationObserver(function(){if(!Q)Q=requestAnimationFrame(fix)}).observe(document.body,{childList:true,subtree:true});
+setInterval(fix,2000);setTimeout(fix,500);
+})();
 })();
 </script>
 </body>
