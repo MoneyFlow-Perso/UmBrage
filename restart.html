@@ -3433,6 +3433,47 @@ if(wrap){
 var iv=setInterval(function(){if(sb&&BIZ){clearInterval(iv);load(true);setInterval(load,600000)}},1500);
 document.addEventListener('ovpaint',function(){load()});
 })();
+    /* ===== Restore from backup copy (v29): admin-only check + put back missing rows ===== */
+(function(){
+var pl=document.getElementById('bkplan');if(!pl)return;
+var box=document.createElement('div');box.id='bkrs';box.style.cssText='display:none;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)';
+var ttl=document.createElement('small');ttl.style.cssText='display:block;color:var(--muted);line-height:1.5';
+ttl.textContent='Restore: compares the newest automatic backup copy with your live data and can put back rows that were deleted. It never changes or overwrites rows that exist.';
+var cb=document.createElement('button');cb.className='gh';cb.id='bkchk';cb.style.marginTop='8px';cb.textContent='Check backup copy';
+var rb=document.createElement('button');rb.className='pri';rb.id='bkrestore';rb.style.cssText='margin-top:8px;display:none';rb.textContent='Restore missing rows';
+var out=document.createElement('small');out.id='bkrsout';out.style.cssText='display:block;margin-top:8px;color:var(--muted);line-height:1.5;white-space:pre-wrap';
+box.append(ttl,cb,rb,out);pl.after(box);
+function admin(){return !!(window.isAdmin&&window.isAdmin())}
+function sync(){box.style.display=admin()?'':'none'}
+setInterval(sync,2000);sync();
+function say(t,c){out.style.color=c||'var(--muted)';out.textContent=t}
+async function call(body){
+ var r=await sb.functions.invoke('umb-restore',{body:body});
+ if(r.error){var m=r.error.message;try{var j=await r.error.context.json();if(j&&j.error)m=j.error}catch(e){}throw new Error(m)}
+ return r.data}
+function lines(a){return a.map(function(x){return x.missing>0?x.table+': '+x.missing:x.missing===-1?x.table+': cannot be restored here':x.table+': could not be checked'}).join('\n')}
+function when(d){return d.exported_at?new Date(d.exported_at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):d.file}
+async function check(){
+ if(!admin()){say('Admin only.','#fb7185');return}
+ cb.disabled=true;rb.style.display='none';say('Checking the newest backup copy...');
+ try{var d=await call({mode:'preview'}),t=d.tables||[];
+  if(d.total_missing>0){say('Backup copy of '+when(d)+': '+d.total_missing+' row(s) are missing from your live data.\n'+lines(t),'#fbbf24');rb.style.display=''}
+  else say('Backup copy of '+when(d)+': nothing is missing. Your live data has every row from it.'+(t.length?'\n'+lines(t):''),'#34d399')}
+ catch(e){say('Could not check: '+((e&&e.message)||e),'#fb7185')}
+ cb.disabled=false}
+cb.addEventListener('click',check);
+rb.addEventListener('click',async function(){
+ if(!admin())return;
+ if(!confirm('Put back the missing rows from the newest backup copy? Rows that exist are not changed.'))return;
+ rb.disabled=true;cb.disabled=true;say('Restoring...');
+ try{var d=await call({mode:'restore',confirm:true});
+  var k=Object.keys(d.restored||{}).map(function(t){return t+': '+d.restored[t]}).join('\n');
+  var er=Object.keys(d.errors||{}).map(function(t){return t+': '+d.errors[t]}).join('\n');
+  say('Restored '+d.total_restored+' row(s). Refresh the page to see them.'+(k?'\n'+k:'')+(er?'\nCould not restore:\n'+er:''),er?'#fb7185':'#34d399');
+  rb.style.display='none'}
+ catch(e){say('Restore failed: '+((e&&e.message)||e),'#fb7185')}
+ rb.disabled=false;cb.disabled=false});
+})();
 })();
 </script>
 </body>
