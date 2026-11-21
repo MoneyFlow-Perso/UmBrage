@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>UmBrage Backup Opener</title>
+<style>
+:root{--bg:#fff;--fg:#1a1a1a;--mut:#666;--card:#f3f3f1;--bd:#d6d6d2;--ok:#1b7a3a;--bad:#b3261e;--btn:#1a1a1a;--btnfg:#fff}
+@media (prefers-color-scheme:dark){:root{--bg:#161616;--fg:#eee;--mut:#9a9a9a;--card:#222;--bd:#3a3a3a;--ok:#5fd183;--bad:#ff8a80;--btn:#eee;--btnfg:#161616}}
+*{box-sizing:border-box}
+body{margin:0;padding:16px;font:16px/1.45 system-ui,sans-serif;background:var(--bg);color:var(--fg);max-width:640px;margin:auto}
+h1{font-size:20px;margin:0 0 4px}
+p{margin:6px 0;color:var(--mut)}
+label{display:block;margin:14px 0 4px;font-weight:600}
+input[type=password],textarea{width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--card);color:var(--fg);font:inherit}
+textarea{height:70px;font-size:13px}
+button{margin-top:14px;padding:12px 16px;border:0;border-radius:8px;background:var(--btn);color:var(--btnfg);font:inherit;font-weight:600;width:100%}
+button.alt{background:var(--card);color:var(--fg);border:1px solid var(--bd)}
+#msg{margin-top:12px;font-weight:600}
+.ok{color:var(--ok)}.bad{color:var(--bad)}
+table{width:100%;border-collapse:collapse;margin-top:8px;font-size:15px}
+td{padding:6px 4px;border-bottom:1px solid var(--bd)}
+td:last-child{text-align:right}
+details{margin-top:2px}
+summary{cursor:pointer}
+pre{white-space:pre-wrap;word-break:break-word;font-size:12px;background:var(--card);padding:8px;border-radius:8px;margin:6px 0}
+</style>
+</head>
+<body>
+<h1>UmBrage Backup Opener</h1>
+<p>Opens an encrypted backup file (umb-....enc.json) from your private GitHub repo. Everything happens on this phone. Nothing is uploaded.</p>
+
+<label for="file">1. Choose the backup file</label>
+<input type="file" id="file">
+<label for="txt">or paste the file text here</label>
+<textarea id="txt" placeholder='{"v":1,"alg":"AES-256-GCM", ...'></textarea>
+
+<label for="pass">2. Passphrase</label>
+<input type="password" id="pass" autocomplete="off">
+
+<button id="go">Open backup</button>
+<div id="msg"></div>
+<div id="out"></div>
+<button id="dl" class="alt" style="display:none">Download opened data (not encrypted)</button>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var opened = null;
+
+  function b(s) { return Uint8Array.from(atob(s), function (c) { return c.charCodeAt(0); }); }
+
+  async function openBackup(text, pass) {
+    var f = JSON.parse(text);
+    var mat = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+    var key = await crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt: b(f.salt), iterations: f.iter, hash: 'SHA-256' },
+      mat, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+    var u = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b(f.iv) }, key, b(f.data)));
+    if (f.gzip) {
+      u = new Uint8Array(await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());
+    }
+    return JSON.parse(new TextDecoder().decode(u));
+  }
+
+  function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
+
+  function show(d) {
+    var names = Object.keys(d.tables).sort(), total = 0, h = '<table>';
+    names.forEach(function (n) {
+      var rows = d.tables[n]; total += rows.length;
+      var sample = rows.length ? esc(JSON.stringify(rows[0], null, 1)) : 'empty';
+      h += '<tr><td><details><summary>' + esc(n) + '</summary><pre>' + sample + '</pre></details></td><td>' + rows.length + '</td></tr>';
+    });
+    h += '</table>';
+    var when = d.exported_at ? new Date(d.exported_at).toLocaleString() : '?';
+    $('msg').className = 'ok';
+    $('msg').textContent = 'Opened. Made ' + when + ' (your phone time). ' + names.length + ' tables, ' + total + ' rows.';
+    $('out').innerHTML = h;
+    $('dl').style.display = 'block';
+  }
+
+  $('go').onclick = async function () {
+    var msg = $('msg');
+    msg.className = ''; msg.textContent = 'Working...'; $('out').innerHTML = ''; $('dl').style.display = 'none';
+    try {
+      var text = $('txt').value.trim();
+      var fl = $('file').files[0];
+      if (!text && fl) text = await fl.text();
+      if (!text) throw new Error('nofile');
+      if (!$('pass').value) throw new Error('nopass');
+      opened = await openBackup(text, $('pass').value);
+      show(opened);
+    } catch (e) {
+      msg.className = 'bad';
+      if (e.message === 'nofile') msg.textContent = 'Choose the file or paste its text first.';
+      else if (e.message === 'nopass') msg.textContent = 'Type the passphrase first.';
+      else if (e.name === 'OperationError') msg.textContent = 'Wrong passphrase, or the file is damaged.';
+      else if (e.name === 'SyntaxError') msg.textContent = 'This does not look like a backup file. Copy the whole file text.';
+      else msg.textContent = 'Could not open: ' + (e.message || e);
+    }
+  };
+
+  $('dl').onclick = function () {
+    if (!opened) return;
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(opened)], { type: 'application/json' }));
+    a.download = 'umbrage-backup-opened.json';
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+})();
+</script>
+</body>
+</html>
