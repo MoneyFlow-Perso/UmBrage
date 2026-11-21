@@ -3364,6 +3364,36 @@ tab=function(t){_t.apply(this,arguments);
  if(on){draw();look()}};
 setInterval(function(){var p=panel();if(p&&p.style.display!=='none')look()},20000);
 })();
+    /* ===== Backup file (v27): the admin downloads a full copy of the data as a file ===== */
+(function(){
+var TB=['umb_ai_usage','umb_ask_access','umb_ask_log','umb_ask_saved','umb_audit_log','umb_auto_log','umb_channel_accounts','umb_conversations','umb_customer_photos','umb_customers','umb_expenses','umb_identities','umb_insights_cache','umb_item_costs','umb_learned_responses','umb_messages','umb_order_items','umb_orders','umb_product_costs','umb_product_photos','umb_products','umb_receipts','umb_reply_versions','umb_settings','umb_source_map','umb_stock','umb_test_cases','umb_variants'];
+var wrap=document.getElementById('cpx');wrap=wrap&&wrap.parentNode;if(!wrap)return;
+var bt=document.createElement('button');bt.className='pri';bt.id='bkdl';bt.textContent='Download full backup';
+var note=document.createElement('small');note.id='bknote';note.style.cssText='display:block;margin-top:8px;color:var(--muted);line-height:1.5';
+wrap.append(bt);wrap.after(note);
+function two(n){return String(n).padStart(2,'0')}
+function stamp(d){return d.getFullYear()+'-'+two(d.getMonth()+1)+'-'+two(d.getDate())+'-'+two(d.getHours())+two(d.getMinutes())}
+function show(){var t=store.get('lastbk',null);
+ if(!t){note.style.color='#fbbf24';note.textContent='No file backup downloaded yet. The database also keeps its own nightly copies.';return}
+ var days=Math.floor((Date.now()-new Date(t).getTime())/864e5);
+ note.style.color=days>=7?'#fbbf24':'var(--muted)';
+ note.textContent='Last file backup: '+new Date(t).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+(days>=7?' ('+days+' days ago - download a new one)':'')}
+async function grab(t){var out=[],from=0;for(;;){var r=await sb.from(t).select('*').range(from,from+999);if(r.error)throw r.error;out=out.concat(r.data||[]);if(!r.data||r.data.length<1000)break;from+=1000}return out}
+bt.addEventListener('click',async function(){
+ if(!(window.isAdmin&&window.isAdmin())){note.style.color='#fb7185';note.textContent='The backup file is for the admin only.';return}
+ if(!sb||!BIZ){note.style.color='#fb7185';note.textContent='Connect and sign in first.';return}
+ bt.disabled=true;var data={},fails=[],rows=0;
+ for(var i=0;i<TB.length;i++){note.style.color='var(--muted)';note.textContent='Backing up '+(i+1)+' of '+TB.length+'...';
+  try{data[TB[i]]=await grab(TB[i]);rows+=data[TB[i]].length}catch(e){fails.push(TB[i]+': '+((e&&e.message)||e))}}
+ var now=new Date(),file={app:'UmBrage backup',taken_at:now.toISOString(),business_id:BIZ,tables:data,errors:fails};
+ var b=new Blob([JSON.stringify(file)],{type:'application/json'}),a=document.createElement('a');
+ a.href=URL.createObjectURL(b);a.download='umbrage-backup-'+stamp(now)+'.json';document.body.append(a);a.click();
+ setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},1500);
+ bt.disabled=false;
+ if(fails.length){note.style.color='#fb7185';note.textContent='File saved, but '+fails.length+' table(s) could not be read: '+fails[0]}
+ else{store.set('lastbk',now.toISOString());show();note.textContent='Saved '+rows+' rows from '+TB.length+' tables. '+note.textContent}});
+show();
+})();
 })();
 </script>
 </body>
