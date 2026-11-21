@@ -1428,7 +1428,7 @@ addExp.last=cs.value;dlg.close();dlg.remove();paintCash(span()).catch(function()
 dlg.append(h('b',{},'Add expense'),h('label',{},'Amount (\u09f3)'),a,h('label',{},'Category'),cs,h('label',{},'Note'),n,h('label',{},'Date'),dt,
 h('p',{class:'ac'},h('button',{class:'gh',onclick:function(){dlg.close();dlg.remove()}},'Cancel'),sv));
 document.body.append(dlg);dlg.showModal()}
-box.addEventListener('click',function(e){
+document.addEventListener('click',function(e){
 if(e.target.closest('#xadd')){addExp();return}
 var cp=e.target.closest('#xcp');
 if(cp){try{navigator.clipboard.writeText(reTxt).then(function(){cp.textContent='Copied'},function(){cp.textContent='Not allowed here'})}catch(x){cp.textContent='Not allowed here'}return}
