@@ -1416,14 +1416,16 @@ el.innerHTML=head('STOCK &amp; REORDER')+'<div class="xs"><div><b>'+out.length+'
 +'<p class="ac" style="margin-top:10px"><button class="gh" id="xcp">Copy reorder list</button></p>':'<div class="ovn">Nothing to reorder</div>')
 +row('Stock worth (cost)',T(cost))+row('Stock worth (price)',T(worth))}
 function addExp(){
-var a=h('input',{type:'number',min:'1',inputmode:'decimal',placeholder:'Amount'}),n=h('input',{placeholder:'For example rent, courier, ads'}),
+var C=['Ads','Delivery','Packaging','Rent','Salary','Other'],
+a=h('input',{type:'number',min:'1',inputmode:'decimal',placeholder:'Amount'}),cs=h('select',{}),n=h('input',{placeholder:'For example rent, courier, ads'}),
 dt=h('input',{type:'date',value:ymd(new Date())}),dlg=h('dialog',{}),sv=h('button',{class:'pri'},'Save');
+C.forEach(function(c){cs.append(h('option',{value:c},c))});cs.value=addExp.last||'Other';
 sv.addEventListener('click',async function(){var v=Number(a.value);if(!(v>0)){err('Enter an amount');return}
 sv.disabled=true;
-var r=await sb.from('umb_expenses').insert({business_id:BIZ,spent_on:dt.value||ymd(new Date()),amount:v,note:n.value.trim()||null,created_by:UID});
+var r=await sb.from('umb_expenses').insert({business_id:BIZ,spent_on:dt.value||ymd(new Date()),category:cs.value,amount:v,note:n.value.trim()||null,created_by:UID});
 if(r.error){err(r.error);sv.disabled=false;return}
-dlg.close();dlg.remove();paintCash(span()).catch(function(){})});
-dlg.append(h('b',{},'Add expense'),h('label',{},'Amount (\u09f3)'),a,h('label',{},'Note'),n,h('label',{},'Date'),dt,
+addExp.last=cs.value;dlg.close();dlg.remove();paintCash(span()).catch(function(){})});
+dlg.append(h('b',{},'Add expense'),h('label',{},'Amount (\u09f3)'),a,h('label',{},'Category'),cs,h('label',{},'Note'),n,h('label',{},'Date'),dt,
 h('p',{class:'ac'},h('button',{class:'gh',onclick:function(){dlg.close();dlg.remove()}},'Cancel'),sv));
 document.body.append(dlg);dlg.showModal()}
 box.addEventListener('click',function(e){
