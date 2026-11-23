@@ -3479,15 +3479,16 @@ rb.addEventListener('click',async function(){
 var LET=['XS','S','M','L','XL','2XL','3XL','4XL'],NUM=[],KID=[],ORD=['XXS','XS','S','M','L','XL','2XL','3XL','4XL','5XL'];
 for(var n=20;n<=50;n++)NUM.push(String(n));
 for(var k=1;k<=14;k++)KID.push(String(k));
+  var SHO=[];for(var s=3;s<=14;s++){SHO.push(String(s));if(s<14)SHO.push(s+'.5')}
 function canon(t){var u=String(t).trim().toUpperCase();return u==='XXL'?'2XL':u==='XXXL'?'3XL':u==='XXXXL'?'4XL':u}
 function skey(t){var c=canon(t),i=ORD.indexOf(c);if(i>-1)return i;if(/^\d+(\.\d+)?$/.test(c))return 100+parseFloat(c);return 1000}
 function split(v){return String(v||'').split(',').map(function(x){return x.trim()}).filter(Boolean)}
 function sortList(a){return a.map(function(x,i){return{x:x,i:i,k:skey(x)}}).sort(function(p,q){return p.k-q.k||p.i-q.i}).map(function(o){return o.x})}
-function guess(v){var a=split(v);if(!a.length)return 0;if(a.some(function(x){return skey(x)<100}))return 0;var m=Math.max.apply(null,a.map(function(x){return parseFloat(x)||0}));return m>=20?1:2}
+function guess(v){var a=split(v);if(!a.length)return 0;if(a.some(function(x){return /\.5$/.test(x)}))return 3;if(a.some(function(x){return skey(x)<100}))return 0;var m=Math.max.apply(null,a.map(function(x){return parseFloat(x)||0}));return m>=20?1:2}
 function decorate(z){
  if(z.getAttribute('data-chips'))return;z.setAttribute('data-chips','1');
  var wrap=h('div',{style:'margin:6px 0 2px'}),tabs=h('div',{style:'display:flex;flex-wrap:wrap;gap:6px;align-items:center'}),box=h('div',{style:'display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;max-height:150px;overflow-y:auto'});
- var sets=[['Letters S\u20134XL',LET],['Numbers 20\u201350',NUM],['Kids 1\u201314',KID]],cur=guess(z.value),tb=[];
+  var sets=[['Letters S\u20134XL',LET],['Numbers 20\u201350',NUM],['Kids 1\u201314',KID],['Shoes 3\u201314',SHO]],cur=guess(z.value),tb=[];
  sets.forEach(function(s,i){var b=h('button',{type:'button'},s[0]);b.addEventListener('click',function(){cur=i;draw()});tb.push(b);tabs.append(b)});
  var cp=h('button',{type:'button'},'Copy from previous colour'),cl=h('button',{type:'button'},'Clear');
  cp.addEventListener('click',function(){
