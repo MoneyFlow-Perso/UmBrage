@@ -3547,11 +3547,11 @@ prodCard=function(p){
    try{
     var r=await sb.from('umb_products').update({price_reply:v||null}).eq('id',p.id);
     if(r.error)throw r.error;
-    say(v?'Saved. Auto will send this the first time a customer says the price is high.':'Saved as empty. The team answers price objections.','#34d399');
+    say(v?'Saved. Auto will send this the first time a customer says the price is high or cheaper elsewhere.':'Saved as empty. The team answers price objections.','#34d399');
    }catch(e){say('Could not save: '+((e&&e.message)||e),'#fb7185')}
    sv.disabled=false});
   var wrap=h('div',{'data-prr':'1'},
-   h('label',{},'Price reply in Bangla (Auto sends it the first time a customer says the price is high)'),
+   h('label',{},'Price reply in Bangla (Auto sends it the first time a customer says the price is high or cheaper elsewhere)'),
    h('div',{style:'font-size:12px;color:var(--muted);margin:2px 0 4px;line-height:1.5'},'Write it once. {product} and {price} are filled in. Say why this product is worth the price, say the price is fixed, and end with a question such as "অর্ডারটি কনফার্ম করবো?". Empty = the team answers. A second push always goes to the team.'),
    ta,pv,h('p',{class:'ac'},sv,ex),st);
   pt.after(wrap);
