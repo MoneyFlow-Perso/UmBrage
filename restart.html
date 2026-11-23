@@ -3516,6 +3516,55 @@ function scan(){q=0;[].forEach.call(document.querySelectorAll('input[placeholder
 new MutationObserver(function(){if(!q)q=requestAnimationFrame(scan)}).observe(document.body,{childList:true,subtree:true});
 scan();
 })();
+  /* ===== Price reply (v31): Bangla reply that Auto sends the first time a customer says the price is high ===== */
+(function(){
+var EX='জি, {product} এর দাম {price} টাকা। [এখানে কাপড় বা কোয়ালিটির কথা লিখুন]। দাম নির্ধারিত। অর্ডারটি কনফার্ম করবো?';
+var _pc=prodCard;
+prodCard=function(p){
+ var box=_pc(p);
+ try{
+  var pt=box.querySelector('textarea[name=pt]');
+  if(!pt||box.querySelector('[data-prr]'))return box;
+  var ta=h('textarea',{rows:'4',placeholder:'জি, {product} এর দাম {price} টাকা। ... অর্ডারটি কনফার্ম করবো?'});
+  var st=h('div',{style:'font-size:13px;line-height:1.5;margin:4px 0'});
+  var pv=h('div',{style:'font-size:13px;line-height:1.5;margin:4px 0;color:var(--muted);white-space:pre-wrap'});
+  var say=function(t,c){st.textContent=t;st.style.color=c||'var(--muted)'};
+  var fill=function(t){return String(t||'').replace(/\{product\}/g,p.name||'').replace(/\{price\}/g,String(p.price||'')).replace(/\{code\}/g,p.code||'').replace(/\{name\}/g,'Rahim')};
+  var showPv=function(){var v=ta.value.trim();pv.textContent=v?('Customer sees: '+fill(v)):''};
+  ta.addEventListener('input',showPv);
+  var sv=h('button',{class:'pri',type:'button'},'Save price reply');
+  var ex=h('button',{type:'button',style:'margin-left:8px'},'Use example');
+  ex.addEventListener('click',function(){ta.value=EX;showPv();say('Replace the [ ... ] part with your own words, then Save.')});
+  sv.addEventListener('click',async function(){
+   var v=ta.value.trim();
+   if(!p.id){say('Save the product first, then write its price reply.','#fb7185');return}
+   if(/[\[\]]/.test(v)){say('Replace the [ ... ] part with your own words first.','#fb7185');return}
+   if(v&&!/[\u0980-\u09FF]/.test(v)){say('Write it in Bangla.','#fb7185');return}
+   if(/[\u00C0-\u024F\u0590-\u08FF\u0E00-\u0EFF]/.test(v)){say('There is a broken letter in the text (not Bangla or English). Retype that word.','#fb7185');return}
+   if(/\{(?!(product|price|name|code)\})[^}]*\}/.test(v)){say('Only {product}, {price}, {name} and {code} can be used inside { }.','#fb7185');return}
+   if(v.length>700){say('Too long. Keep it under 700 letters.','#fb7185');return}
+   sv.disabled=true;say('Saving...');
+   try{
+    var r=await sb.from('umb_products').update({price_reply:v||null}).eq('id',p.id);
+    if(r.error)throw r.error;
+    say(v?'Saved. Auto will send this the first time a customer says the price is high.':'Saved as empty. The team answers price objections.','#34d399');
+   }catch(e){say('Could not save: '+((e&&e.message)||e),'#fb7185')}
+   sv.disabled=false});
+  var wrap=h('div',{'data-prr':'1'},
+   h('label',{},'Price reply in Bangla (Auto sends it the first time a customer says the price is high)'),
+   h('div',{style:'font-size:12px;color:var(--muted);margin:2px 0 4px;line-height:1.5'},'Write it once. {product} and {price} are filled in. Say why this product is worth the price, say the price is fixed, and end with a question such as "অর্ডারটি কনফার্ম করবো?". Empty = the team answers. A second push always goes to the team.'),
+   ta,pv,h('p',{class:'ac'},sv,ex),st);
+  pt.after(wrap);
+  if(p.id)(async function(){
+   try{
+    var r=await sb.from('umb_products').select('price_reply').eq('id',p.id).maybeSingle();
+    if(r.error)throw r.error;
+    if(r.data&&r.data.price_reply!=null){ta.value=r.data.price_reply;showPv()}
+   }catch(e){say('Price reply could not be loaded: '+((e&&e.message)||e),'#fb7185')}
+  })();
+ }catch(e){}
+ return box}
+})();
 })();
 </script>
 </body>
