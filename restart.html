@@ -3577,7 +3577,7 @@ function val(id){var e=$i(id);return e?e.value:''}
 function chk(id){var e=$i(id);return !!(e&&e.checked)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function nv(x){return x==null?'':x}
-function dflt(){return{enabled:false,free_delivery_pieces:null,free_delivery_min_amount:null,bundle_pieces:null,bundle_discount:null,once_per_chat:true,check_stock:true,margin_guard:true,wording_bn:'',wording_en:'',valid_from:null,valid_until:null}}
+function dflt(){return{enabled:false,free_delivery_pieces:null,free_delivery_min_amount:null,bundle_pieces:null,bundle_discount:null,once_per_chat:true,check_stock:true,margin_guard:true,wording_bn:'',wording_en:'',valid_from:null,valid_until:null,bundle_scope:'any'}}
 function today(){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dhaka',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}
 function warns(s){
  if(!s.margin_guard||typeof PR==='undefined')return '';
@@ -3620,7 +3620,10 @@ function draw(){
   +'<div class="sch">Leave both empty to switch this perk off.</div>'
   +'<div class="scl">PERK B: BUNDLE (single piece price stays fixed)</div>'
   +'<div class="two"><div><div class="sch">Pieces</div><input id="sc_bp" inputmode="numeric" placeholder="e.g. 2" value="'+esc(nv(s.bundle_pieces))+'"></div><div><div class="sch">Taka off</div><input id="sc_bd" inputmode="decimal" placeholder="e.g. 100" value="'+esc(nv(s.bundle_discount))+'"></div></div>'
-  +'<div class="sch">Both empty = this perk is off.</div>'
+    +'<div class="sch">Both empty = this perk is off.</div>'
+  +'<div class="scl">HOW PIECES ARE COUNTED (both perks)</div>'
+  +'<select id="sc_sc"><option value="any"'+(s.bundle_scope==='same'?'':' selected')+'>Any products together</option><option value="same"'+(s.bundle_scope==='same'?' selected':'')+'>Same product only</option></select>'
+  +'<div class="sch">Any = pieces of all products add up. Same = each product is judged alone. The bundle discount is given once per order.</div>'
   +'<div class="scl">VALID (optional, to match your ad period)</div>'
   +'<div class="two"><div><div class="sch">From</div><input type="date" id="sc_vf" value="'+esc(nv(s.valid_from))+'"></div><div><div class="sch">Until (last day)</div><input type="date" id="sc_vu" value="'+esc(nv(s.valid_until))+'"></div></div>'
   +'<div class="sch">Empty = no date limit.</div>'
@@ -3665,7 +3668,7 @@ async function saveMain(){
  if(bad(fp,bp,bd,fa,'scm'))return;
  var vf=val('sc_vf')||null,vu=val('sc_vu')||null;
  if(vf&&vu&&vu<vf){say('scm','The end date must be on or after the start date.','#fb7185');return}
- var row={business_id:BIZ,enabled:chk('sc_on'),free_delivery_pieces:fp,free_delivery_min_amount:fa,bundle_pieces:bp,bundle_discount:bd,once_per_chat:chk('sc_once'),check_stock:chk('sc_stock'),margin_guard:chk('sc_mg'),wording_bn:val('sc_bn').trim(),wording_en:val('sc_en').trim(),valid_from:vf,valid_until:vu,updated_by:(typeof UID!=='undefined'&&UID)?UID:null,updated_at:new Date().toISOString()};
+  var row={business_id:BIZ,enabled:chk('sc_on'),bundle_scope:(val('sc_sc')==='same'?'same':'any'),free_delivery_pieces:fp,free_delivery_min_amount:fa,bundle_pieces:bp,bundle_discount:bd,once_per_chat:chk('sc_once'),check_stock:chk('sc_stock'),margin_guard:chk('sc_mg'),wording_bn:val('sc_bn').trim(),wording_en:val('sc_en').trim(),valid_from:vf,valid_until:vu,updated_by:(typeof UID!=='undefined'&&UID)?UID:null,updated_at:new Date().toISOString()};
  say('scm','Saving...','var(--muted)');
  try{var r=await sb.from('umb_compromise').upsert(row,{onConflict:'business_id'});if(r.error)throw r.error;
   S=row;var any=!!(fp||fa||bp);draw();
