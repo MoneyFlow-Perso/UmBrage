@@ -3708,6 +3708,119 @@ setInterval(function(){
  if(!C||!document.body.contains(C)){var c=mk();if(c){c.style.display='';loaded=false;look()}}},2000);
 var cx=$i('cx');if(cx)cx.addEventListener('click',function(){setTimeout(function(){loaded=false;S=null;PM={};open=false;if(C){C.remove();C=null}},80)});
 })();
+      /* ===== Payment accounts card (v32): admin-only card on the Automation Center page - COD, bKash, Nagad, Rocket, bank, and what the customer pays to confirm (Delivery charges or Advance) ===== */
+(function(){
+var KEY='crm:automation',C=null,S=null,open=false,loaded=false,cur='',ERR='';
+var css=document.createElement('style');css.textContent='#pmcard:hover{transform:none!important}#pmcard .scr{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px}#pmcard .scr input[type=checkbox]{width:18px;height:18px;flex:none;padding:0;margin:0}#pmcard .scl{font-size:12px;color:var(--muted);margin:14px 0 5px;font-weight:700;letter-spacing:.04em}#pmcard .sch{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5}#pmcard textarea{min-height:58px;resize:vertical;font-size:13px}';document.head.appendChild(css);
+function adm(){return !!(window.isAdmin&&window.isAdmin())}
+function ok(){return !!(typeof sb!=='undefined'&&sb&&typeof BIZ!=='undefined'&&BIZ)}
+function num(v){v=String(v==null?'':v).replace(/,/g,'').trim();if(v==='')return null;var n=Number(v);return isFinite(n)?n:NaN}
+function $i(id){return document.getElementById(id)}
+function val(id){var e=$i(id);return e?e.value:''}
+function chk(id){var e=$i(id);return !!(e&&e.checked)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function nv(x){return x==null?'':x}
+function say(id,t,c){var m=$i(id);if(m){m.textContent=t||'';m.style.color=c||'#19f39b'}}
+function dflt(){return{cod_enabled:true,bkash_number:'',bkash_kind:'personal',nagad_number:'',nagad_kind:'personal',rocket_number:'',rocket_kind:'personal',bank_name:'',bank_account_name:'',bank_account_number:'',bank_branch:'',advance_required:false,advance_kind:'fixed',advance_amount:null,advance_at_order:true,advance_dhaka:null,advance_outside:null,advance_note_bn:'',advance_note_en:'',pay_note_bn:'',pay_note_en:'',confirm_msg_bn:'',confirm_msg_en:''}}
+function phone(v){v=String(v||'').replace(/[\s-]/g,'');if(/^\+?8801\d{9}$/.test(v))v=v.replace(/^\+?88/,'');return v}
+function kindSel(id,v){return '<select id="'+id+'"><option value="personal"'+(v==='personal'||!v?' selected':'')+'>Personal (Send Money)</option><option value="agent"'+(v==='agent'?' selected':'')+'>Agent (Cash Out)</option><option value="merchant"'+(v==='merchant'?' selected':'')+'>Merchant (Payment)</option></select>'}
+function wallet(title,idn,idk,s,pre){return '<div class="scl">'+title+'</div><div class="two"><div><div class="sch">Number</div><input id="'+idn+'" inputmode="tel" placeholder="01XXXXXXXXX" value="'+esc(nv(s[pre+'_number']))+'"></div><div><div class="sch">Account type</div>'+kindSel(idk,s[pre+'_kind'])+'</div></div>'}
+function sumTxt(s){
+ var o=[];if(s.cod_enabled)o.push('COD');if(s.bkash_number)o.push('bKash');if(s.nagad_number)o.push('Nagad');if(s.rocket_number)o.push('Rocket');if(s.bank_account_number)o.push('Bank');
+ var t=o.length?o.join(', '):'No payment way set';
+ if(s.advance_required)t+=' \u00B7 '+(s.advance_kind==='delivery'?'Delivery charges first':'Advance first');
+ return t}
+function mk(){
+ if(C&&document.body.contains(C))return C;
+ var f=$i('crmf');if(!f||!f.parentNode)return null;
+ C=document.createElement('div');C.id='pmcard';C.className='rs-card p';C.style.cssText='display:none;margin:0 0 12px';
+ f.parentNode.insertBefore(C,f);
+ C.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('[data-pm]');if(!t)return;var a=t.getAttribute('data-pm');
+  if(a==='tog'){open=!open;draw();return}
+  if(a==='save')saveMain()});
+ C.addEventListener('change',function(e){var id=e.target&&e.target.id;
+  if(id==='pm_ak')showMode()});
+ return C}
+function showMode(){var k=val('pm_ak'),d=$i('pm_dl'),x=$i('pm_fx');if(d)d.style.display=k==='delivery'?'':'none';if(x)x.style.display=k==='delivery'?'none':''}
+function draw(){
+ if(!adm()){if(C){C.remove();C=null}return}
+ var c=mk();if(!c)return;
+ var s=S||dflt();
+ var h='<button type="button" data-pm="tog" style="all:unset;display:flex;width:100%;align-items:center;justify-content:space-between;gap:10px;cursor:pointer"><span><span class="rs-sub" style="display:block">PAYMENT ACCOUNTS</span><b style="font-size:16px;color:#19f39b">'+(ERR?'Could not load':(!loaded?'Checking...':esc(sumTxt(s))))+'</b></span><span style="color:var(--muted);font-size:12px">'+(open?'Close \u25B2':'Open \u25BC')+'</span></button>';
+ if(open&&loaded&&!ERR){
+  h+='<div class="sch">When a customer asks how to pay or for an account number, they get these details automatically. Only filled accounts are sent.</div>'
+  +'<div class="scr"><input type="checkbox" id="pm_cod"'+(s.cod_enabled?' checked':'')+'><label for="pm_cod">Cash on Delivery (COD) is available</label></div>'
+  +wallet('BKASH','pm_bk','pm_bkk',s,'bkash')
+  +wallet('NAGAD','pm_ng','pm_ngk',s,'nagad')
+  +wallet('ROCKET','pm_rk','pm_rkk',s,'rocket')
+  +'<div class="scl">BANK ACCOUNT</div>'
+  +'<div class="sch">Bank name</div><input id="pm_bn" value="'+esc(nv(s.bank_name))+'">'
+  +'<div class="sch" style="margin-top:8px">Account name</div><input id="pm_ban" value="'+esc(nv(s.bank_account_name))+'">'
+  +'<div class="sch" style="margin-top:8px">Account number</div><input id="pm_bnum" inputmode="numeric" value="'+esc(nv(s.bank_account_number))+'">'
+  +'<div class="sch" style="margin-top:8px">Branch</div><input id="pm_bbr" value="'+esc(nv(s.bank_branch))+'">'
+  +'<div class="scl">EXTRA LINE WITH THE PAYMENT DETAILS (optional)</div>'
+  +'<div class="sch">Bangla (also Banglish customers)</div><textarea id="pm_pnb">'+esc(nv(s.pay_note_bn))+'</textarea>'
+  +'<div class="sch" style="margin-top:8px">English</div><textarea id="pm_pne">'+esc(nv(s.pay_note_en))+'</textarea>'
+  +'<div class="sch">Empty = built-in wording.</div>'
+  +'<div class="scl" style="margin-top:18px;padding-top:12px;border-top:1px solid var(--line)">PAY TO CONFIRM THE ORDER (avoids fake orders)</div>'
+  +'<div class="scr"><input type="checkbox" id="pm_ar"'+(s.advance_required?' checked':'')+'><label for="pm_ar">Ask the customer to pay first to confirm the order</label></div>'
+  +'<div class="sch">When OFF, nothing changes. When ON, the order is confirmed only after the customer pays this amount.</div>'
+  +'<div class="scl">WHAT THE CUSTOMER PAYS</div>'
+  +'<select id="pm_ak"><option value="delivery"'+(s.advance_kind==='delivery'?' selected':'')+'>Delivery charges only</option><option value="fixed"'+(s.advance_kind==='delivery'?'':' selected')+'>A fixed advance amount</option></select>'
+  +'<div id="pm_dl"><div class="two" style="margin-top:8px"><div><div class="sch">Inside Dhaka (Tk)</div><input id="pm_dd" inputmode="decimal" placeholder="e.g. 80" value="'+esc(nv(s.advance_dhaka))+'"></div><div><div class="sch">Outside Dhaka (Tk)</div><input id="pm_do" inputmode="decimal" placeholder="e.g. 130" value="'+esc(nv(s.advance_outside))+'"></div></div></div>'
+  +'<div id="pm_fx"><div class="sch" style="margin-top:8px">Advance amount (Tk)</div><input id="pm_fa" inputmode="decimal" placeholder="e.g. 200" value="'+esc(nv(s.advance_amount))+'"></div>'
+  +'<div class="sch">Both sets of numbers stay saved. Only the one you choose above is used.</div>'
+  +'<div class="scr"><input type="checkbox" id="pm_ao"'+(s.advance_at_order?' checked':'')+'><label for="pm_ao">Ask for it when the order is taken</label></div>'
+  +'<div class="scl">LINE ABOUT THE PAYMENT REQUEST (optional)</div>'
+  +'<div class="sch">Bangla (also Banglish customers)</div><textarea id="pm_anb">'+esc(nv(s.advance_note_bn))+'</textarea>'
+  +'<div class="sch" style="margin-top:8px">English</div><textarea id="pm_ane">'+esc(nv(s.advance_note_en))+'</textarea>'
+  +'<div class="scl">MESSAGE AFTER PAYMENT, WHEN THE ORDER IS CONFIRMED (optional)</div>'
+  +'<div class="sch">Bangla (also Banglish customers)</div><textarea id="pm_cnb">'+esc(nv(s.confirm_msg_bn))+'</textarea>'
+  +'<div class="sch" style="margin-top:8px">English</div><textarea id="pm_cne">'+esc(nv(s.confirm_msg_en))+'</textarea>'
+  +'<div class="sch">Empty = built-in wording.</div>'
+  +'<div style="margin-top:12px"><button type="button" class="pri" data-pm="save">Save payment accounts</button></div><div id="pmm" class="sch" style="margin-top:8px"></div>'}
+ else if(open&&ERR){h+='<div class="sch" style="color:#fb7185;margin-top:8px">'+esc(ERR)+'</div>'}
+ c.innerHTML=h;
+ if(open&&loaded&&!ERR)showMode()}
+async function look(){
+ if(!ok()||!adm())return;
+ try{
+  var a=await sb.from('umb_payment_info').select('*').eq('business_id',BIZ).maybeSingle();
+  if(a.error)throw a.error;
+  S=a.data||dflt();ERR='';loaded=true}
+ catch(e){ERR='Could not load Payment accounts: '+((e&&e.message)||e)}
+ draw()}
+async function saveMain(){
+ if(!adm()||!ok())return;
+ var bk=phone(val('pm_bk')),ng=phone(val('pm_ng')),rk=phone(val('pm_rk')),bad=null;
+ [[bk,'bKash'],[ng,'Nagad'],[rk,'Rocket']].forEach(function(x){if(!bad&&x[0]&&!/^01\d{9}$/.test(x[0]))bad=x[1]+' number should be 11 digits, like 01XXXXXXXXX.'});
+ if(bad){say('pmm',bad,'#fb7185');return}
+ var dd=num(val('pm_dd')),dout=num(val('pm_do')),fa=num(val('pm_fa'));
+ if([dd,dout,fa].some(function(n){return n!==null&&(isNaN(n)||n<0)})){say('pmm','Amounts must be numbers, 0 or more.','#fb7185');return}
+ var ar=chk('pm_ar'),ak=(val('pm_ak')==='delivery'?'delivery':'fixed');
+ if(ar&&ak==='delivery'&&!(dd>0||dout>0)){say('pmm','Enter the delivery charge for Dhaka and/or outside Dhaka, or turn the payment request OFF.','#fb7185');return}
+ if(ar&&ak==='fixed'&&!(fa>0)){say('pmm','Enter the advance amount (more than 0), or turn the payment request OFF.','#fb7185');return}
+ var row={business_id:BIZ,cod_enabled:chk('pm_cod'),bkash_number:bk||null,bkash_kind:val('pm_bkk')||'personal',nagad_number:ng||null,nagad_kind:val('pm_ngk')||'personal',rocket_number:rk||null,rocket_kind:val('pm_rkk')||'personal',
+  bank_name:val('pm_bn').trim()||null,bank_account_name:val('pm_ban').trim()||null,bank_account_number:val('pm_bnum').trim()||null,bank_branch:val('pm_bbr').trim()||null,
+  advance_required:ar,advance_kind:ak,advance_amount:fa,advance_dhaka:dd,advance_outside:dout,advance_at_order:chk('pm_ao'),
+  advance_note_bn:val('pm_anb').trim()||null,advance_note_en:val('pm_ane').trim()||null,pay_note_bn:val('pm_pnb').trim()||null,pay_note_en:val('pm_pne').trim()||null,confirm_msg_bn:val('pm_cnb').trim()||null,confirm_msg_en:val('pm_cne').trim()||null,
+  updated_at:new Date().toISOString()};
+ say('pmm','Saving...','var(--muted)');
+ try{var r=await sb.from('umb_payment_info').upsert(row,{onConflict:'business_id'});if(r.error)throw r.error;
+  S=row;draw();
+  var any=!!(row.bkash_number||row.nagad_number||row.rocket_number||row.bank_account_number);
+  if(ar&&!any)say('pmm','Saved. The payment request is ON but no bKash, Nagad, Rocket or bank account is filled, so customers have nowhere to pay.','#fbbf24');else say('pmm','Saved.')}
+ catch(e){say('pmm','Could not save: '+((e&&e.message)||e),'#fb7185')}}
+var _t=tab;
+tab=function(t){_t.apply(this,arguments);cur=String(t);
+ if(cur===KEY&&adm()){var c=mk();if(c){c.style.display='';if(!loaded)look();else draw()}}
+ else if(C)C.style.display='none'};
+setInterval(function(){
+ if(cur!==KEY)return;
+ if(!adm()){if(C){C.remove();C=null}return}
+ if(!C||!document.body.contains(C)){var c=mk();if(c){c.style.display='';loaded=false;look()}}},2000);
+var cx=$i('cx');if(cx)cx.addEventListener('click',function(){setTimeout(function(){loaded=false;S=null;open=false;if(C){C.remove();C=null}},80)});
+})();
   /* ===== Admin-only leftovers hidden from staff (v31): Reply Intelligence "Auto & Settings" pill, the "Answer automatically" tick (kept only on a reply that is already ON, so staff can switch it off to edit), Quality Lab "Delete" ===== */
 (function(){
 var Q=0;
