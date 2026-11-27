@@ -1980,6 +1980,33 @@ s.hidden=true;_tRX(t)};
 (function(){
 var AL=[['dam','daam','দাম','price','rate','mullo','মূল্য','cost'],['koto','kto','কত','much'],['taka','tk','টাকা'],['kemon','kmn','কেমন'],['delivery','dilivery','ডেলিভারি','courier','কুরিয়ার','shipping'],['charge','chrg','চার্জ','khoroch','খরচ'],['size','sizes','সাইজ'],['stock','available','ache','achhe','আছে'],['payment','pay','পেমেন্ট'],['bkash','bikash','বিকাশ'],['nagad','নগদ'],['cod','cash','ক্যাশ'],['order','অর্ডার'],['thanks','thank','thx','dhonnobad','ধন্যবাদ'],['hi','hello','hey','হ্যালো','হাই'],['salam','assalamualaikum','assalamu','সালাম','আসসালামু']];
 var BN=['dam','koto','taka','kemon','ache','achhe','lagbe','hobe','hbe','ami','apni','amar','apnar','kore','korbo','den','dibo','pabo','nibo','kothay','kon','kivabe','kibhabe','ki','ekta','jonno','chai','chaichi','bhai','vai','apu','dilen','dite','nite','pathan','pathaben','bolen','bolun','janan','jante','salam','assalamualaikum','assalamu','walaikum','dhonnobad','nai','nei','kinbo','kinte'];
+  /* v3.13: same Banglish words and spellings as umb-auto (so the Test box says what Auto will do) */
+BN.push.apply(BN,'o ar ebong kintu tobe tahole tahle othoba ba jodi tai karon mane mone moto shudhu sudhu ektu aro aaro abar abr ekhon ekhoni akhon akhoni aj aaj kal pore tarpor tarpore sathe sathey sheshe shesh se tar tara ora eta ota eita oita ei oi emon oirokom erokom ekhane okhane ekhaney okhaney onek kom besi beshi sob shob shobgulo sobgulo gulo guli khana tuku duita tinta charta dui naki kina kine keu kar kake konta kotota koyta koita koy kotodin kothay kothai keno kemon kibhabe kivabe kemne kobe kokhon nite niye nibo nebo nilam nisi nichi nicchi kinbo kinlam kinte kena kenar dite dibo diben dilam disi dichi dicchi diyen diyo dao den pathao pathan pathaiyen pathaiben pathaiso pathailam pathaisi pathaichi pathaichhi pathabo pathaben dekhao dekhaben dekhan dekhi dekhbo dekhlam dekhsi korbo korben korlam korsi korchi korechi korechen korte kore koro korun koren hoise hoyeche hoyese hosse hoilo hoye holo hoy hobe hobena hoyni hoyto hoite hocche hochhe hoche hoitese hoibo hoibe gese gechhe gelo jabe jabo jaben jacche ashbo ashben ashche ashle esechi ese pelam pelei peyechi paici paisi pailam painai paini pabo paba paben pabona pawa pete pai lagbe lagse lagtese lagche laage lagena lage laagbe chai chaichi chaitesi chaitechi chacchi chaibo chaiben chaina chaite chaitam dorkar dorkari bolbo bolen bolun boli bolsi bolechi bolchi bolte janaben janan janabo janaiyen janaite jani janina jante bujhi bujhlam bujhsi bujhte bujhini thik thikase thikache valo bhalo bhal accha acha achha hya haa ha hae ji jii na nah nahi nai nei nam thikana thikanay baire bahire bahir taka tk dam daam mullo mulyo taratari jaldi vai bhai bhaiya vaiya apu apa dada didi salam slm walaikum wassalam waalaikum assalamualaikum assalamu dhonnobad dhonyobad dhonnobaad kalo sada lal sobuj holud golapi khoyeri komola boro choto chhoto ta ti'.split(' '));
+AL[0].push('dom', 'dor', 'দর', 'mulya', 'prise', 'pris');
+AL[1].push('koyto', 'kotto');
+AL[2].push('bdt', 'takaa');
+AL[3].push('kemn', 'kamon', 'kemne');
+AL[4].push('delivary', 'delivari', 'dilivary', 'dilivari', 'deliveri', 'ডেলিভারী');
+AL[5].push('chorge', 'charje', 'kharoch', 'khorcha', 'খরচা');
+AL[6].push('saiz', 'sais', 'sice');
+AL[7].push('ase', 'ashe', 'asey', 'asche', 'aschhe', 'stok', 'স্টক', 'avaiable', 'avalable', 'avilable', 'availabe', 'availble');
+AL[8].push('pament', 'peyment', 'paymant');
+AL[9].push('bkas', 'bikas', 'bkaash', 'bekash');
+AL[10].push('nogod', 'nagod', 'nogad');
+AL[11].push('kash', 'কাশ');
+AL[12].push('ordar', 'ordr', 'অর্ডারটি');
+AL[13].push('thnx', 'thanx', 'thankyou', 'thanku', 'dhonyobad', 'dhonnobaad');
+AL[14].push('hlw', 'helo', 'hallo', 'hlo', 'হেলো');
+AL[15].push('slm', 'salaam', 'assalam', 'asslamualaikum', 'assalamualaikam', 'আস্সালামু');
+AL.push(['color', 'colour', 'rong', 'rang', 'রং', 'রঙ', 'কালার', 'কলার']);
+AL.push(['return', 'exchange', 'ferot', 'ferat', 'ফেরত', 'poriborton', 'পরিবর্তন', 'bodol', 'বদল']);
+AL.push(['confirm', 'konfirm', 'confrm', 'কনফার্ম']);
+AL.push(['address', 'addres', 'adress', 'thikana', 'ঠিকানা']);
+AL.push(['photo', 'photos', 'pic', 'pics', 'picture', 'image', 'chobi', 'ছবি', 'ফটো']);
+AL.push(['shop', 'showroom', 'store', 'dokan', 'দোকান', 'location', 'লোকেশন']);
+AL.push(['discount', 'disount', 'offer', 'ছাড়', 'chhar']);
+AL.push(['kobe', 'kokhon', 'কবে', 'কখন']);
+AL.push(['warranty', 'waranty', 'guarantee', 'gurantee', 'ওয়ারেন্টি', 'গ্যারান্টি']);
 var ASK={bn:'কোন পণ্যটির কথা বলছেন? অনুগ্রহ করে পণ্যের নাম বা কোড পাঠান।',en:'Which product do you mean? Please send the product name or code.'};
 function norm(s){return String(s||'').toLowerCase().replace(/[\u09E6-\u09EF]/g,function(c){return String(c.charCodeAt(0)-0x09E6)}).replace(/[^\p{L}\p{M}\p{N}\s]/gu,' ').replace(/\s+/g,' ').trim()}
 function isBn(s){return /[\u0980-\u09FF]/.test(s)}
