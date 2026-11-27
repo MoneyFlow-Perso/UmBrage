@@ -1899,10 +1899,18 @@ return '<div class="rx-item'+(x.suspended?' off':'')+'" data-id="'+x.id+'" style
 '<div class="rx-rp">'+esc((x.approved_reply||'').slice(0,100))+'</div>'+
 (x.category?'<span class="rx-c">'+esc(x.category)+'</span>':'')+(lg?'<span class="rx-c mu">'+lg[1]+'</span>':'')+
 (n('text')>1?'<span class="rx-c mu">'+IC.text+' '+n('text')+'</span>':'')+(n('photo')?'<span class="rx-c mu">'+IC.photo+' '+n('photo')+'</span>':'')+(n('product')?'<span class="rx-c mu">'+IC.product+' '+n('product')+'</span>':'')+
-(x.auto_answer?'<span class="rx-c">\u26A1 Auto</span>':'')+(x.suspended?'<span class="rx-c am">Suspended</span>':'')+'<span class="rx-c mu">v'+(x.version||1)+'</span></div>'}).join(''):box('<div class="rx-sub">No replies found.</div>'));
+(x.auto_answer?'<span class="rx-c">\u26A1 Auto</span>':'')+(x.suspended?'<span class="rx-c am">Suspended</span>':'')+'<span class="rx-c mu">v'+(x.version||1)+'</span>'+((window.isAdmin?window.isAdmin():true)?'<button type="button" class="rx-del" data-del="'+x.id+'" style="float:right;background:none;border:1px solid var(--red);color:var(--red);border-radius:8px;padding:3px 12px;font-size:12px;cursor:pointer">Delete</button>':'')+'</div>'}).join(''):box('<div class="rx-sub">No replies found.</div>'));
 var s=$('#rxs');s.addEventListener('input',function(){drawLib(s.value);var n=$('#rxs');n.focus();n.setSelectionRange(n.value.length,n.value.length)});
 $('#rxnw').addEventListener('click',function(){CUR=null;EDIT=true;show()});
                     if(window.RIX&&RIX.lib)RIX.lib(b,ROWS);
+                    b.querySelectorAll('[data-del]').forEach(function(d){d.addEventListener('click',async function(ev){ev.stopPropagation();ev.preventDefault();
+var id=d.dataset.del,row=ROWS.filter(function(x){return x.id===id})[0];if(!row)return;
+if(!confirm('Delete "'+(row.title||(row.triggers&&row.triggers[0])||'this reply')+'" for good? Auto and the Test box will stop using it.'))return;
+d.disabled=true;d.textContent='...';
+try{var q=await sb.from('umb_learned_responses').delete().eq('id',id).select('id');
+if(q.error||!q.data||!q.data.length){q=await sb.from('umb_learned_responses').update({status:'rejected',auto_answer:false,suspended:true,suspended_reason:'Deleted by staff'}).eq('id',id).select('id');if(q.error)throw q.error;if(!q.data||!q.data.length)throw new Error('Not deleted. Your account may not be allowed to delete this.')}
+ROWS=ROWS.filter(function(x){return x.id!==id});$('#st').style.borderColor='';$('#st').textContent='Reply deleted.';drawLib($('#rxs')?$('#rxs').value:'')}
+catch(e){d.disabled=false;d.textContent='Delete';err(e)}})});
 b.querySelectorAll('[data-id]').forEach(function(c){c.addEventListener('click',function(){CUR=ROWS.filter(function(x){return x.id===c.dataset.id})[0];EDIT=true;show()})})}
 function swap(i,j){if(j<0||j>=P.length)return;var t=P[i];P[i]=P[j];P[j]=t;drawParts()}
 function drawParts(){var d=$('#rxpt');d.replaceChildren();
