@@ -4011,6 +4011,27 @@ setInterval(function(){
  if(!C||!document.body.contains(C)){var c=mk();if(c){c.style.display='';loaded=false;look()}}},2000);
 var cx=$i('cx');if(cx)cx.addEventListener('click',function(){setTimeout(function(){loaded=false;S=null;open=false;if(C){C.remove();C=null}},80)});
 })();
+  /* ===== Stock in chats (v36): two new choices ("few left" and "exact number") and the "few left" level, inside Brand knowledge ===== */
+(function(){
+var sel=document.getElementById('ksk');if(!sel)return;
+[['low','On: say available, and "only a few left" when it is running low'],['count','On: say the exact number of pieces left']].forEach(function(o){
+ if(![].some.call(sel.options,function(x){return x.value===o[0]})){var op=document.createElement('option');op.value=o[0];op.textContent=o[1];sel.appendChild(op)}});
+var lab=document.createElement('label');lab.htmlFor='kslow';lab.textContent='"Only a few left" when a size or colour has this many pieces or fewer';
+var inp=document.createElement('input');inp.id='kslow';inp.type='number';inp.min='1';inp.max='99';inp.value='5';
+var note=null;[].forEach.call(document.querySelectorAll('small'),function(s){if(/Exact stock counts are never sent/.test(s.textContent))note=s});
+sel.after(lab,inp);
+function sync(){var v=sel.value;lab.style.display=inp.style.display=(v==='low')?'':'none';
+ if(note)note.textContent=v==='count'?'Customers are told the exact number of pieces left. Staff always see the counts in the Staff only line under each conversation.':'Exact stock counts are not sent in chats. Staff always see them in the Staff only line under each conversation.'}
+sel.addEventListener('change',sync);sync();
+function load(){if(!(typeof sb!=='undefined'&&sb&&typeof BIZ!=='undefined'&&BIZ))return;
+ sb.from('umb_settings').select('low_stock_at').eq('business_id',BIZ).maybeSingle().then(function(r){if(r&&r.data&&r.data.low_stock_at!=null)inp.value=r.data.low_stock_at;sync()},function(){})}
+var _t=tab;tab=function(t){var x=_t.apply(this,arguments);if(String(t)==='set'){load();setTimeout(sync,50)}return x};
+var sv=document.getElementById('sv');
+if(sv)sv.addEventListener('click',function(){
+ if(!(typeof sb!=='undefined'&&sb&&typeof BIZ!=='undefined'&&BIZ))return;
+ var n=parseInt(inp.value,10);if(isNaN(n))n=5;n=Math.min(99,Math.max(1,n));inp.value=n;
+ sb.from('umb_settings').update({low_stock_at:n}).eq('business_id',BIZ).then(function(r){if(r&&r.error)err(r.error)})});
+})();                               
 })();
 </script>
 </body>
