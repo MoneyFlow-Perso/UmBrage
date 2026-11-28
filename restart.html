@@ -3892,6 +3892,60 @@ setInterval(fix,2000);setTimeout(fix,500);
     if(soon)setTimeout(autoDraft,soon+500);
   };
 })();
+    /* ===== Reply Library organiser (v34): filters with counts, 15 + Show more, doubles finder, overlap check, safe Starter pack ===== */
+(function(){
+  var F='all',SHOW=15,_lib=window.RIX&&window.RIX.lib;
+  var CH=[['all','All'],['act','Active'],['auto','Auto ON'],['sus','Suspended'],['bn','Bangla'],['en','English']];
+  function adm(){return !(window.isAdmin&&!window.isAdmin())}
+  function E(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+  function lg(x){return x.language==='en'?'en':'bn'}
+  function ok(x,f){return f==='all'?true:f==='act'?!x.suspended:f==='auto'?(!!x.auto_answer&&!x.suspended):f==='sus'?!!x.suspended:f==='en'?lg(x)==='en':lg(x)==='bn'}
+  function base(x){return String(x.title||'').trim().toLowerCase().replace(/\s*\(english\)\s*$/,'')}
+  function doubles(rows){var g={},ex=[];
+    rows.forEach(function(r){if(r.suspended||!base(r))return;var k=base(r)+'|'+lg(r);(g[k]=g[k]||[]).push(r)});
+    Object.keys(g).forEach(function(k){var a=g[k];if(a.length<2)return;a.sort(function(p,q){return (q.auto_answer?1:0)-(p.auto_answer?1:0)});ex=ex.concat(a.slice(1))});return ex}
+  function wset(r){var s={};(r.word_rules||[]).forEach(function(w){(w.any||[]).forEach(function(x){x=String(x).trim().toLowerCase();if(x.length>1)s[x]=1})});return s}
+  function overlaps(rows){var a=rows.filter(function(r){return !r.suspended&&base(r)}),o=[];
+    for(var i=0;i<a.length;i++)for(var j=i+1;j<a.length;j++){var p=a[i],q=a[j];if(lg(p)!==lg(q)||base(p)===base(q))continue;
+      var sp=wset(p),sq=wset(q),sh=Object.keys(sp).filter(function(w){return sq[w]});if(sh.length)o.push({p:p,q:q,w:sh})}
+    o.sort(function(x,y){return y.w.length-x.w.length});return o.slice(0,8)}
+  function apply(b,rows){var n=0,items=b.querySelectorAll('.rx-item[data-id]'),more=b.querySelector('#rxmore'),shown=b._shown||SHOW;
+    [].forEach.call(items,function(it){var r=rows.filter(function(x){return x.id===it.dataset.id})[0],v=!r||ok(r,F);
+      if(v){n++;it.style.display=n<=shown?'':'none'}else it.style.display='none'});
+    if(more){more.style.display=n>shown?'':'none';more.textContent='Show more ('+(n-shown)+' left)'}
+    [].forEach.call(b.querySelectorAll('[data-rxf]'),function(c){c.className='rs-btn small'+(c.dataset.rxf===F?' primary':'')})}
+  async function packAdd(rows,btn){var have={};rows.forEach(function(r){have[base(r)+'|'+lg(r)]=1});
+    var add=window.RIM.pack().filter(function(x){return !/^payment methods/i.test(x.title)&&!have[base(x)+'|'+lg(x)]});
+    if(!add.length){$('#st').textContent='Nothing to add. Every starter reply is already in the library.';return}
+    add.forEach(function(x){x.word_rules=(x.word_rules||[]).map(function(w){return{any:(w.any||[]).filter(function(t){return !/^(kemon|কেমন)$/i.test(String(t).trim())})}})});
+    if(!confirm('Add '+add.length+' starter replies ('+add.map(function(x){return x.title}).join(', ')+')? Answer automatically stays off. Payment methods is skipped: payment details come from the Payment accounts card.'))return;
+    btn.disabled=true;
+    try{var now=new Date().toISOString(),q=await sb.from('umb_learned_responses').insert(add.map(function(x){return Object.assign(x,{business_id:BIZ,status:'approved',reviewed_by:UID,reviewed_at:now,created_by:UID,channels:['whatsapp','instagram','messenger','website'],auto_answer:false,keep_top:false,suspended:false,customer_text:x.triggers[0]})})).select('id');
+      if(q.error)throw q.error;$('#st').style.borderColor='';$('#st').textContent=add.length+' starter replies added.';var a=document.querySelector('#rxp .primary');if(a)a.click()}catch(e){btn.disabled=false;err(e)}}
+  window.RIX=window.RIX||{};
+  window.RIX.lib=function(b,rows){
+    if(_lib)_lib(b,rows);
+    var sp=b.querySelector('#rxsp');if(sp){var n=sp.cloneNode(true);sp.replaceWith(n);n.addEventListener('click',function(){packAdd(rows,n)})}
+    var ex=adm()?doubles(rows):[],ov=adm()?overlaps(rows):[];
+    var bar=document.createElement('div');
+    bar.innerHTML='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'+CH.map(function(c){var k=rows.filter(function(x){return ok(x,c[0])}).length;return '<button type="button" class="rs-btn small" data-rxf="'+c[0]+'">'+c[1]+' '+k+'</button>'}).join('')+'</div>'+
+    (ex.length?'<div class="rx-box" style="border-color:#ffc96b88"><div class="rx-st">DOUBLES</div><div class="rx-sub">'+ex.length+' reply'+(ex.length>1?' is':'s are')+' a second copy of another (same title and language): '+ex.slice(0,4).map(function(x){return E(x.title)}).join(', ')+(ex.length>4?'...':'')+'. The one with Auto ON is kept.</div><button type="button" class="rs-btn small" id="rxdb" style="margin-top:10px">Suspend '+ex.length+' extra copies</button></div>':'')+
+    (ov.length?'<details class="rx-box"><summary>Overlap check ('+ov.length+')</summary><div class="rx-hint">These replies share trigger words, so one message can match both. Fine when the scores differ; check them if Auto flags "not sure which reply fits".</div>'+ov.map(function(o){return '<div class="rx-sub" style="margin-top:6px"><b>'+E(o.p.title)+'</b> and <b>'+E(o.q.title)+'</b>: '+E(o.w.slice(0,6).join(', '))+'</div>'}).join('')+'</details>':'')+
+    '<button type="button" class="rs-btn small" id="rxmore" style="display:none;width:100%;margin:6px 0 12px"></button>';
+    var first=b.querySelector('.rx-item'),more;
+    [].slice.call(bar.childNodes).forEach(function(nd){if(nd.id==='rxmore')return;if(first)b.insertBefore(nd,first);else b.appendChild(nd)});
+    more=bar.querySelector('#rxmore');var last=b.querySelectorAll('.rx-item');
+    if(last.length)last[last.length-1].after(more);else b.appendChild(more);
+    b._shown=SHOW;
+    [].forEach.call(b.querySelectorAll('[data-rxf]'),function(c){c.addEventListener('click',function(){F=c.dataset.rxf;b._shown=SHOW;apply(b,rows)})});
+    more.addEventListener('click',function(){b._shown=(b._shown||SHOW)+SHOW;apply(b,rows)});
+    var db=b.querySelector('#rxdb');if(db)db.addEventListener('click',async function(){
+      if(!confirm('Suspend '+ex.length+' extra copies? They stay in the library (Suspended) and Auto stops using them.'))return;db.disabled=true;
+      try{var q=await sb.from('umb_learned_responses').update({auto_answer:false,suspended:true,suspended_reason:'Double copy'}).in('id',ex.map(function(x){return x.id})).select('id');
+        if(q.error)throw q.error;ex.forEach(function(x){x.suspended=true;x.auto_answer=false});$('#st').style.borderColor='';$('#st').textContent=ex.length+' extra copies suspended.';
+        var s=$('#rxs');if(s)s.dispatchEvent(new Event('input'))}catch(e){db.disabled=false;err(e)}});
+    apply(b,rows)};
+})();
 })();
 </script>
 </body>
