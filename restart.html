@@ -3871,6 +3871,27 @@ function fix(){Q=0;var a=adm(),d=a?'':'none';
 new MutationObserver(function(){if(!Q)Q=requestAnimationFrame(fix)}).observe(document.body,{childList:true,subtree:true});
 setInterval(fix,2000);setTimeout(fix,500);
 })();
+  /* ===== Draft refreshes itself after new customer messages (v33) ===== */
+(function(){
+  var QUIET=10000; /* wait until the customer has been quiet this long (milliseconds), so a burst of messages costs one draft */
+  var DT={},_rg=regen;
+  regen=async function(c){var b=(c.draft||'').trim();await _rg(c);var t=(c.draft||'').trim();if(t&&(t!==b||DT[c.id]===undefined))DT[c.id]=t};
+  function typing(){var a=document.activeElement;return !!(a&&(a.tagName==='TEXTAREA'||a.tagName==='INPUT'||a.tagName==='SELECT'))}
+  autoDraft=async function(){
+    var soon=0;
+    for(var i=0;i<convs.length;i++){
+      var c=convs[i],l=c.msgs[c.msgs.length-1];
+      if(!l||l.r!=='c'||BUSY[c.id]||AUTO[l.id]||l.ts<START)continue;
+      if(c.dr&&(c.fk||DT[c.id]===undefined||(c.draft||'').trim()!==DT[c.id]))continue;
+      var w=QUIET-(Date.now()-l.ts);
+      if(w>0){soon=Math.max(soon,w);continue}
+      if(typing()){soon=Math.max(soon,4000);continue}
+      AUTO[l.id]=1;var had=!!c.dr;
+      try{await regen(c);if(had){var s=document.querySelector('#st');if(s)s.textContent='Draft updated for the customer\u2019s latest messages.'}}catch(e){}
+    }
+    if(soon)setTimeout(autoDraft,soon+500);
+  };
+})();
 })();
 </script>
 </body>
