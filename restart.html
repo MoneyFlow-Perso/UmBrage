@@ -2988,7 +2988,8 @@ function paint(chips,list){
   var cv=x.conversation_id&&typeof convs!=='undefined'?convs.filter(function(c){return c.id===x.conversation_id})[0]:null;
   if(cv){var ob=h('button',{type:'button',class:'gh',style:'margin-top:8px'},'Open chat');
    ob.addEventListener('click',function(e){e.stopPropagation();tab('inbox');cur=cv.id;cv.unread=0;if(typeof persist==='function')persist();document.body.classList.add('chat');render()});ex.append(ob)}
-  row.addEventListener('click',function(){var k=x.id||x.created_at;EXP[k]=!EXP[k];ex.hidden=!EXP[k]});
+    row.addEventListener('click',function(){var k=x.id||x.created_at;EXP[k]=!EXP[k];ex.hidden=!EXP[k]});
+  ex.addEventListener('click',function(){var k=x.id||x.created_at;EXP[k]=false;ex.hidden=true});
   kids.push(row,ex)});
  if(rows.length>SHOW){var more=h('button',{type:'button',class:'gh',style:'width:100%;margin-top:6px'},'Show more ('+(rows.length-SHOW)+' left)');
   more.addEventListener('click',function(){SHOW+=15;paint(chips,list)});kids.push(more)}
