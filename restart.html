@@ -3947,6 +3947,70 @@ setInterval(fix,2000);setTimeout(fix,500);
         var s=$('#rxs');if(s)s.dispatchEvent(new Event('input'))}catch(e){db.disabled=false;err(e)}});
     apply(b,rows)};
 })();
+    /* ===== Brain live types card (v35): admin-only card on the Automation Center page - which kinds of message the brain may answer by itself ===== */
+(function(){
+var KEY='crm:automation',C=null,S=null,open=false,loaded=false,cur='',ERR='';
+var T=[['pay','Payment','Payment details and "I paid" messages. Built from the Payment accounts card, no AI.'],['price','Price','Price questions. Mostly built in code, little or no AI.'],['order','Order details','Size, colour and order questions. May use an AI call.'],['other','Everything else','Any other question. Uses an AI call. The most careful one to switch on.']];
+var css=document.createElement('style');css.textContent='#blcard:hover{transform:none!important}#blcard .scr{display:flex;align-items:flex-start;gap:8px;margin-top:12px;font-size:13px}#blcard .scr input[type=checkbox]{width:18px;height:18px;flex:none;padding:0;margin:1px 0 0}#blcard .sch{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.4}#blcard .scl{font-size:12px;color:var(--muted);margin:16px 0 2px;font-weight:700;letter-spacing:.04em}';document.head.appendChild(css);
+function adm(){return !!(window.isAdmin&&window.isAdmin())}
+function ok(){return !!(typeof sb!=='undefined'&&sb&&typeof BIZ!=='undefined'&&BIZ)}
+function $i(id){return document.getElementById(id)}
+function chk(id){var e=$i(id);return !!(e&&e.checked)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function say(id,t,c){var m=$i(id);if(m){m.textContent=t||'';m.style.color=c||'#19f39b'}}
+function live(){return S&&Array.isArray(S.brain_live)?S.brain_live.map(String):['pay','price']}
+function sumTxt(){var a=live(),o=T.filter(function(t){return a.indexOf(t[0])>-1}).map(function(t){return t[1]});
+ var s=o.length?'Live: '+o.join(', '):'The brain sends nothing';if(a.indexOf('watch')>-1)s+=' \u00B7 Watching the rest';return s}
+function mk(){
+ if(C&&document.body.contains(C))return C;
+ var f=$i('crmf');if(!f||!f.parentNode)return null;
+ C=document.createElement('div');C.id='blcard';C.className='rs-card p';C.style.cssText='display:none;margin:0 0 12px';
+ f.parentNode.insertBefore(C,f);
+ C.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('[data-bl]');if(!t)return;var a=t.getAttribute('data-bl');
+  if(a==='tog'){open=!open;draw();return}
+  if(a==='save')save()});
+ return C}
+function draw(){
+ if(!adm()){if(C){C.remove();C=null}return}
+ var c=mk();if(!c)return;
+ var a=live();
+ var h='<button type="button" data-bl="tog" style="all:unset;display:flex;width:100%;align-items:center;justify-content:space-between;gap:10px;cursor:pointer"><span><span class="rs-sub" style="display:block">AI BRAIN: WHAT IT MAY ANSWER BY ITSELF</span><b style="font-size:16px;color:#19f39b">'+(ERR?'Could not load':(!loaded?'Checking...':esc(sumTxt())))+'</b></span><span style="color:var(--muted);font-size:12px">'+(open?'Close \u25B2':'Open \u25BC')+'</span></button>';
+ if(open&&loaded&&!ERR){
+  h+='<div class="sch">When no saved reply fits, the brain checks the message type. A ticked type is answered and sent by itself after the brain passes every check. An unticked type is not sent: the customer gets the holding reply and your team is flagged.</div>'
+  +'<div class="scl">SEND THESE BY ITSELF</div>';
+  T.forEach(function(t){h+='<div class="scr"><input type="checkbox" id="bl_'+t[0]+'"'+(a.indexOf(t[0])>-1?' checked':'')+'><label for="bl_'+t[0]+'"><b>'+t[1]+'</b><div class="sch">'+t[2]+'</div></label></div>'});
+  h+='<div class="scl">TEST FIRST</div>'
+  +'<div class="scr"><input type="checkbox" id="bl_watch"'+(a.indexOf('watch')>-1?' checked':'')+'><label for="bl_watch"><b>Watch the unticked types</b><div class="sch">The brain is still asked and the Auto Log shows "brain would say", but nothing is sent. Uses AI calls, so keep it OFF on a small free allowance.</div></label></div>'
+  +'<div style="margin-top:14px"><button type="button" class="pri" data-bl="save">Save</button></div><div id="blm" class="sch" style="margin-top:8px"></div>'}
+ else if(open&&ERR){h+='<div class="sch" style="color:#fb7185;margin-top:8px">'+esc(ERR)+'</div>'}
+ c.innerHTML=h}
+async function look(){
+ if(!ok()||!adm())return;
+ try{var r=await sb.from('umb_settings').select('brain_live').eq('business_id',BIZ).maybeSingle();
+  if(r.error)throw r.error;
+  S=r.data||{brain_live:null};ERR='';loaded=true}
+ catch(e){ERR='Could not load: '+((e&&e.message)||e)}
+ draw()}
+async function save(){
+ if(!adm()||!ok())return;
+ var a=[];T.forEach(function(t){if(chk('bl_'+t[0]))a.push(t[0])});if(chk('bl_watch'))a.push('watch');
+ say('blm','Saving...','var(--muted)');
+ try{var r=await sb.from('umb_settings').update({brain_live:a}).eq('business_id',BIZ).select('business_id');
+  if(r.error)throw r.error;
+  if(!r.data||!r.data.length){r=await sb.from('umb_settings').upsert({business_id:BIZ,brain_live:a}).select('business_id');if(r.error)throw r.error}
+  S={brain_live:a};draw();
+  say('blm',a.length?'Saved.':'Saved. The brain will not send anything by itself.',a.length?'':'#fbbf24')}
+ catch(e){say('blm','Could not save: '+((e&&e.message)||e),'#fb7185')}}
+var _t=tab;
+tab=function(t){_t.apply(this,arguments);cur=String(t);
+ if(cur===KEY&&adm()){var c=mk();if(c){c.style.display='';if(!loaded)look();else draw()}}
+ else if(C)C.style.display='none'};
+setInterval(function(){
+ if(cur!==KEY)return;
+ if(!adm()){if(C){C.remove();C=null}return}
+ if(!C||!document.body.contains(C)){var c=mk();if(c){c.style.display='';loaded=false;look()}}},2000);
+var cx=$i('cx');if(cx)cx.addEventListener('click',function(){setTimeout(function(){loaded=false;S=null;open=false;if(C){C.remove();C=null}},80)});
+})();
 })();
 </script>
 </body>
